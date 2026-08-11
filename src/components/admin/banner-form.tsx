@@ -261,7 +261,7 @@ export function BannerForm({ values }: { values: BannerFormValues }) {
               defaultValue={values.image}
               aspect="wide"
               onChange={setImage}
-              hint="Para fondo completo conviene una foto apaisada de al menos 1920x900."
+              hint="Para fondo completo conviene una foto apaisada de al menos 1920x900. Si ademas pones un video de YouTube, esta imagen es la que se ve mientras arranca."
             />
 
             <VideoField
@@ -270,7 +270,7 @@ export function BannerForm({ values }: { values: BannerFormValues }) {
               defaultValue={values.video}
               onChange={setVideo}
               error={state.errors.video}
-              hint="Se reproduce solo, en bucle y sin sonido. Si lo completas, tapa a la imagen, que queda como cartel mientras el video carga. Sube un .mp4 o .webm: un video propio no muestra ningun control. Con un enlace de YouTube o Vimeo hay que incrustar su reproductor, y ese decide por su cuenta cuando asomar su interfaz."
+              hint="Se reproduce solo, en bucle y sin sonido. Si lo completas, tapa a la imagen, que queda como cartel mientras el video arranca. Sube un .mp4 o .webm y no habra ningun control a la vista: los dibuja el navegador solo si se le piden. Con un enlace de YouTube o Vimeo manda su reproductor, y aunque se le pide que no muestre nada, conviene dejar puesta la imagen del banner."
             />
             {video && !previewVideo ? (
               <span className="error-text -mt-3 block">

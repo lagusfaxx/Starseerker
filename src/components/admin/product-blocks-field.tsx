@@ -451,6 +451,6 @@ function imageSizeHintFor(kind: ProductBlockKind): string {
 
 function imageHintFor(kind: ProductBlockKind): string {
   if (kind === 'story') return 'Se muestra centrada encima del titular. Un PNG con fondo transparente queda mejor.';
-  if (kind === 'video') return 'Se ve mientras el video carga. Solo se usa con archivos .mp4 o .webm.';
+  if (kind === 'video') return 'Se ve mientras el video carga y arranca. Conviene ponerlo: con un enlace de YouTube esos primeros segundos son lo unico que tapa su boton de pausa.';
   return 'Ocupa la mitad del bloque; el texto va al otro lado.';
 }

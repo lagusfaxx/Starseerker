@@ -75,14 +75,26 @@ la etiqueta `<video>` del navegador, que no dibuja ningun control porque no se
 los pides. Con un enlace la interfaz la decide el reproductor de YouTube o
 Vimeo, y solo se le puede pedir que no la muestre.
 
-Aun asi, un enlace de YouTube ya no deberia mostrar nada. Lo que dibujaba las
-flechas de anterior y siguiente sobre el banner era la forma de hacer el bucle:
-`loop=1&playlist=<id>` convierte el video en una lista de reproduccion, y a una
-lista el reproductor le pone sus flechas de navegacion, centradas a media
-altura, donde ni `controls=0` las quita ni recortar los bordes las tapa. Ahora
-el bucle se hace desde la pagina —`enablejsapi=1` y un mensaje al reproductor
-cuando el video termina— asi que para YouTube sigue siendo un video suelto y no
-tiene flechas que dibujar.
+Aun asi, un enlace de YouTube ya no deberia mostrar nada. Hicieron falta dos
+cosas, por dos motivos distintos:
+
+- **Las flechas de anterior y siguiente** salian por la forma de hacer el
+  bucle: `loop=1&playlist=<id>` convierte el video en una lista de
+  reproduccion, y a una lista el reproductor le pone su navegacion, centrada a
+  media altura, donde ni `controls=0` la quita ni recortar los bordes la tapa.
+  Ahora el bucle se hace desde la pagina —`enablejsapi=1` y un mensaje al
+  reproductor cuando el video termina— asi que para YouTube sigue siendo un
+  video suelto y no tiene flechas que dibujar.
+- **El boton de pausa de los primeros segundos** no se quita con ningun
+  parametro: el reproductor lo dibuja mientras carga, y `controls=0` solo rige
+  una vez que ya esta reproduciendo. Asi que el iframe se mantiene invisible y
+  aparece cuando el propio reproductor avisa de que arranco. Por eso conviene
+  dejar puesta la **imagen del banner**: es lo que se ve durante esos segundos.
+  Sin imagen se ve el color de fondo, que tampoco esta mal, pero es mas pobre.
+
+Si el dialogo con el reproductor falla —un navegador que bloquea el mensaje,
+YouTube que cambia el protocolo— el video se muestra igual a los cuatro
+segundos. Se pierde la repeticion, no el video.
 
 El video se sirve **por tramos acotados**, que es lo que el navegador necesita
 para reproducirlo, saltar a un punto y reiniciar el bucle. El corte lo hace

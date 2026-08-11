@@ -2096,8 +2096,8 @@ async function testVideoEmbeds() {
   // `playlist` el reproductor deja de tratarlo como un video suelto.
   check('no lo convierte en lista de reproduccion', !yt?.src.includes('playlist'), yt?.src);
   check('ni le pide el bucle a YouTube', !yt?.src.includes('loop='), yt?.src);
-  check('pide que el bucle se pueda hacer desde la pagina', yt?.src.includes('enablejsapi=1'));
-  check('esconde la barra de controles', yt?.src.includes('controls=0'));
+  check('pide que el bucle se pueda hacer desde la pagina', yt?.src.includes('enablejsapi=1') ?? false);
+  check('esconde la barra de controles', yt?.src.includes('controls=0') ?? false);
   check('arranca solo y en silencio', (yt?.src.includes('autoplay=1') && yt?.src.includes('mute=1')) ?? false);
   check('sin pantalla completa ni anotaciones', (yt?.src.includes('fs=0') && yt?.src.includes('iv_load_policy=3')) ?? false);
 

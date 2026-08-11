@@ -283,6 +283,20 @@ function BlockVideo({ block }: { block: ProductBlockData }) {
       aria-hidden="true"
       className="pointer-events-none relative aspect-video w-full overflow-hidden bg-black"
     >
+      {/*
+        El cartel se queda debajo: mientras el video de YouTube arranca, el
+        iframe esta invisible para que no se le vea el boton de pausa, y sin
+        esto lo que se veria entretanto es un rectangulo negro.
+      */}
+      {block.image ? (
+        <MediaImage
+          src={block.image}
+          alt=""
+          sizes="100vw"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+      ) : null}
+
       {video.provider === 'youtube' ? (
         <YoutubeBackground src={video.src} className={clases} />
       ) : (

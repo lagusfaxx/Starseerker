@@ -1,4 +1,5 @@
 import type { BannerVideo } from '@/lib/banner-style';
+import { MediaImage } from './media-image';
 import { YoutubeBackground } from './youtube-background';
 
 /** Cuanto se agranda el iframe mas alla de cubrir el hueco. */
@@ -30,6 +31,21 @@ export function BannerVideo({ video, poster }: { video: BannerVideo; poster?: st
 
     return (
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        {/*
+          El cartel va debajo del iframe y se queda ahi. Mientras el video de
+          YouTube carga, el iframe esta invisible a proposito —es la unica forma
+          de que no se vea su boton de pausa en los primeros segundos— y sin
+          esta imagen lo que se veria entretanto es el color de fondo pelado.
+        */}
+        {poster ? (
+          <MediaImage
+            src={poster}
+            alt=""
+            sizes="100vw"
+            className="absolute inset-0 h-full w-full object-cover object-center"
+          />
+        ) : null}
+
         {video.provider === 'youtube' ? (
           <YoutubeBackground src={video.src} className={clases} />
         ) : (
