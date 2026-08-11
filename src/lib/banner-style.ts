@@ -100,14 +100,18 @@ export function subtitleWeightClass(bold: boolean): string {
  * Video de fondo de un banner.
  *
  * Un archivo directo se reproduce con `<video>`, que es la unica forma de
- * garantizar que no aparezca ningun control. YouTube y Vimeo solo se pueden
- * incrustar por iframe, asi que se les pasan los parametros que ocultan la
- * interfaz y se les quitan los eventos del raton para que tampoco asome al
- * pasar por encima.
+ * garantizar que no aparezca ningun control: los dibuja el navegador solo si
+ * se los pides. YouTube y Vimeo hay que incrustarlos por iframe, y ahi la
+ * interfaz la decide su reproductor; lo unico que se puede hacer es pedirle
+ * que no la muestre y no darle motivos para hacerlo.
  */
 export type BannerVideo =
   | { kind: 'file'; src: string }
-  | { kind: 'embed'; src: string };
+  /**
+   * `provider` no es decorativo: YouTube necesita que alguien lo rebobine
+   * desde el navegador (ver mas abajo por que) y Vimeo no.
+   */
+  | { kind: 'embed'; src: string; provider: 'youtube' | 'vimeo' };
 
 /**
  * De donde sale el video, antes de decidir con que parametros se incrusta.
@@ -163,19 +167,39 @@ export function toBannerVideo(value: string | null | undefined): BannerVideo | n
   if (!source) return null;
 
   if (source.kind === 'youtube') {
+    /*
+     * Falta `loop=1` a proposito, y con el `playlist=<id>`, que es la forma
+     * habitual de hacer que un video de YouTube se repita.
+     *
+     * Esa pareja es justo lo que dibujaba los controles encima del banner. Un
+     * video con `playlist` deja de ser un video para YouTube y pasa a ser una
+     * lista de reproduccion, y a una lista le pone sus flechas de anterior y
+     * siguiente en los costados. Esas flechas no las quita `controls=0`, que
+     * solo se ocupa de la barra de abajo, ni las tapa recortar los bordes,
+     * porque van centradas a media altura.
+     *
+     * Asi que el bucle se hace por fuera: `enablejsapi=1` deja que la pagina
+     * hable con el reproductor, y `YoutubeBackground` lo rebobina cuando el
+     * video termina. Para YouTube sigue siendo un video suelto y no tiene
+     * ninguna flecha que dibujar.
+     */
     const params = new URLSearchParams({
       autoplay: '1',
       mute: '1',
       controls: '0',
-      loop: '1',
-      playlist: source.id,
       playsinline: '1',
       modestbranding: '1',
       rel: '0',
       disablekb: '1',
+      fs: '0',
       iv_load_policy: '3',
+      enablejsapi: '1',
     });
-    return { kind: 'embed', src: `https://www.youtube-nocookie.com/embed/${source.id}?${params}` };
+    return {
+      kind: 'embed',
+      provider: 'youtube',
+      src: `https://www.youtube-nocookie.com/embed/${source.id}?${params}`,
+    };
   }
 
   if (source.kind === 'vimeo') {
@@ -186,7 +210,11 @@ export function toBannerVideo(value: string | null | undefined): BannerVideo | n
       background: '1',
       controls: '0',
     });
-    return { kind: 'embed', src: `https://player.vimeo.com/video/${source.id}?${params}` };
+    return {
+      kind: 'embed',
+      provider: 'vimeo',
+      src: `https://player.vimeo.com/video/${source.id}?${params}`,
+    };
   }
 
   return { kind: 'file', src: source.src };

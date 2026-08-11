@@ -9,6 +9,7 @@ import {
 } from '@/lib/product-blocks';
 import { safeHref } from '@/lib/validation';
 import { MediaImage } from './media-image';
+import { YoutubeBackground } from './youtube-background';
 
 /**
  * Contenido editorial bajo la ficha del producto.
@@ -271,22 +272,28 @@ function BlockVideo({ block }: { block: ProductBlockData }) {
   }
 
   // El iframe llega en 16:9 y la franja tambien lo es, asi que llena el hueco
-  // exacto. Se agranda un 30% por la misma razon que en los banners:
-  // `controls=0` es una peticion y YouTube vuelve a dibujar su interfaz en
-  // cuanto el reproductor se pausa o reinicia el bucle, asi que la barra de
-  // controles y el titulo se dejan fuera del recorte.
+  // exacto. Se agranda apenas un poco, lo justo para dejar fuera la franja de
+  // arriba donde el reproductor escribe el titulo cuando se detiene. El bucle
+  // lo lleva `YoutubeBackground`, igual que en los banners, para que YouTube no
+  // trate el video como una lista y no dibuje sus flechas.
+  const clases = 'pointer-events-none absolute inset-0 h-full w-full scale-[1.12] border-0';
+
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none relative aspect-video w-full overflow-hidden bg-black"
     >
-      <iframe
-        src={video.src}
-        title=""
-        tabIndex={-1}
-        allow="autoplay; encrypted-media; picture-in-picture"
-        className="pointer-events-none absolute inset-0 h-full w-full scale-[1.3] border-0"
-      />
+      {video.provider === 'youtube' ? (
+        <YoutubeBackground src={video.src} className={clases} />
+      ) : (
+        <iframe
+          src={video.src}
+          title=""
+          tabIndex={-1}
+          allow="autoplay; encrypted-media; picture-in-picture"
+          className={clases}
+        />
+      )}
     </div>
   );
 }

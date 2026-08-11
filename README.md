@@ -70,14 +70,19 @@ con el mismo trato: se guardan en la base y se sirven desde `/api/media/<id>`.
 No se recodifican, asi que el archivo que subes es exactamente el que viaja al
 visitante; conviene recortarlo y comprimirlo antes.
 
-Subir el archivo es lo recomendable y no por comodidad. Un video propio se
-reproduce con la etiqueta `<video>` del navegador, que no dibuja ningun
-control. Un enlace de YouTube o Vimeo obliga a incrustar el reproductor de
-ellos, y ese decide por su cuenta cuando mostrar su interfaz encima —al
-pausarse, al reiniciar el bucle o al volver a la portada desde otra pagina— por
-mucho que se le pida lo contrario. Cuando hay un enlace incrustado, la tienda
-recorta los bordes del reproductor para que esa franja quede fuera de lo
-visible, pero con un archivo propio el problema no existe.
+Subir el archivo sigue siendo lo mas seguro: un video propio se reproduce con
+la etiqueta `<video>` del navegador, que no dibuja ningun control porque no se
+los pides. Con un enlace la interfaz la decide el reproductor de YouTube o
+Vimeo, y solo se le puede pedir que no la muestre.
+
+Aun asi, un enlace de YouTube ya no deberia mostrar nada. Lo que dibujaba las
+flechas de anterior y siguiente sobre el banner era la forma de hacer el bucle:
+`loop=1&playlist=<id>` convierte el video en una lista de reproduccion, y a una
+lista el reproductor le pone sus flechas de navegacion, centradas a media
+altura, donde ni `controls=0` las quita ni recortar los bordes las tapa. Ahora
+el bucle se hace desde la pagina —`enablejsapi=1` y un mensaje al reproductor
+cuando el video termina— asi que para YouTube sigue siendo un video suelto y no
+tiene flechas que dibujar.
 
 El video se sirve **por tramos acotados**, que es lo que el navegador necesita
 para reproducirlo, saltar a un punto y reiniciar el bucle. El corte lo hace

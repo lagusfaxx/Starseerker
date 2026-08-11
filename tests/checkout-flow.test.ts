@@ -2079,6 +2079,56 @@ async function testVideoCodecs() {
   }
 }
 
+async function testVideoEmbeds() {
+  console.log('\nVideos incrustados de YouTube y Vimeo');
+  const { toBannerVideo } = await import('../src/lib/banner-style');
+
+  const yt = toBannerVideo('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
+  check('reconoce un enlace de YouTube', yt?.kind === 'embed');
+  check('y lo marca como de YouTube', yt?.kind === 'embed' && yt.provider === 'youtube');
+  check(
+    'lo incrusta sin cookies',
+    yt?.src.startsWith('https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?') ?? false,
+    yt?.src,
+  );
+
+  // Lo que dibujaba las flechas de anterior y siguiente sobre el banner: con
+  // `playlist` el reproductor deja de tratarlo como un video suelto.
+  check('no lo convierte en lista de reproduccion', !yt?.src.includes('playlist'), yt?.src);
+  check('ni le pide el bucle a YouTube', !yt?.src.includes('loop='), yt?.src);
+  check('pide que el bucle se pueda hacer desde la pagina', yt?.src.includes('enablejsapi=1'));
+  check('esconde la barra de controles', yt?.src.includes('controls=0'));
+  check('arranca solo y en silencio', (yt?.src.includes('autoplay=1') && yt?.src.includes('mute=1')) ?? false);
+  check('sin pantalla completa ni anotaciones', (yt?.src.includes('fs=0') && yt?.src.includes('iv_load_policy=3')) ?? false);
+
+  // Las otras formas de escribir un enlace de YouTube llevan al mismo sitio.
+  for (const enlace of [
+    'https://youtu.be/aqz-KE-bpKQ',
+    'https://www.youtube.com/embed/aqz-KE-bpKQ',
+    'https://www.youtube.com/shorts/aqz-KE-bpKQ',
+  ]) {
+    const otro = toBannerVideo(enlace);
+    check(`reconoce ${enlace}`, otro?.src.includes('/embed/aqz-KE-bpKQ') ?? false, otro?.src);
+  }
+
+  const vimeo = toBannerVideo('https://vimeo.com/76979871');
+  check('reconoce un enlace de Vimeo', vimeo?.kind === 'embed');
+  check('y lo marca como de Vimeo', vimeo?.kind === 'embed' && vimeo.provider === 'vimeo');
+  // Vimeo si sabe repetirse solo: su modo `background` esta hecho para esto.
+  check('a Vimeo si le pide el bucle', vimeo?.src.includes('loop=1') ?? false);
+  check('y su modo de fondo', vimeo?.src.includes('background=1') ?? false);
+
+  // Un archivo propio no se incrusta: se reproduce con `<video>`, que es la
+  // unica forma de que no aparezca ningun control.
+  const propio = toBannerVideo('/api/media/abc123');
+  check('un archivo subido no se incrusta', propio?.kind === 'file');
+  check('y conserva su direccion', propio?.src === '/api/media/abc123');
+
+  check('un enlace vacio no da video', toBannerVideo('') === null);
+  check('un enlace roto no da video', toBannerVideo('esto no es una url') === null);
+  check('un javascript: no da video', toBannerVideo('javascript:alert(1)') === null);
+}
+
 async function main() {
   console.log('Ejecutando pruebas de la tienda STARSEEKER...');
 
@@ -2104,6 +2154,7 @@ async function main() {
   await testMediaCleanup();
   await testVideoUpload();
   await testVideoCodecs();
+  await testVideoEmbeds();
 
   console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
   await prisma.$disconnect();
