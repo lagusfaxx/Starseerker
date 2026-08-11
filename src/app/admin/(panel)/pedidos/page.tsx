@@ -62,7 +62,7 @@ export default async function AdminOrdersPage({
             placeholder="Buscar por número, email o nombre"
             className="field w-64 py-2 text-xs"
           />
-          <button className="rounded-xl border border-ink-line px-4 text-xs hover:border-bone">
+          <button className="rounded-xs border border-ink-line px-4 text-xs hover:border-bone">
             Buscar
           </button>
         </form>
@@ -78,7 +78,7 @@ export default async function AdminOrdersPage({
             <Link
               key={filter.label}
               href={`/admin/pedidos${params.toString() ? `?${params}` : ""}`}
-              className={`rounded-full border px-3.5 py-1.5 text-xs transition ${
+              className={`border px-3 py-1.5 text-[11px] transition ${
                 active
                   ? "border-bone bg-bone font-semibold text-ink"
                   : "border-ink-line text-mute hover:border-bone hover:text-bone"
@@ -90,7 +90,7 @@ export default async function AdminOrdersPage({
         })}
       </div>
 
-      <div className="card-surface mt-6 overflow-x-auto">
+      <div className="panel mt-6 overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="border-b border-ink-line text-left text-xs text-mute">
             <tr>
@@ -148,7 +148,7 @@ export default async function AdminOrdersPage({
               <Link
                 key={n}
                 href={`/admin/pedidos${params.toString() ? `?${params}` : ""}`}
-                className={`grid h-9 w-9 place-items-center rounded-full border text-xs ${
+                className={`tnum grid h-9 w-9 place-items-center border text-xs ${
                   n === page ? "border-bone bg-bone font-bold text-ink" : "border-ink-line text-mute"
                 }`}
               >

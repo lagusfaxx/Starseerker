@@ -162,7 +162,7 @@ export async function sendPaymentApproved(order: Order & { items: OrderItem[] })
 
   return send({
     to: ADMIN_TO(),
-    subject: `💰 Nueva venta ${order.number} — ${formatCLP(order.total)}`,
+    subject: `Nueva venta ${order.number} — ${formatCLP(order.total)}`,
     replyTo: order.email,
     html: layout(
       `Venta confirmada ${escapeHtml(order.number)}`,

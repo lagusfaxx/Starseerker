@@ -39,7 +39,7 @@ export function ContactForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="card-surface space-y-4 p-6">
+    <form onSubmit={onSubmit} className="panel space-y-4 p-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="field-label" htmlFor="name">
@@ -95,7 +95,7 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={state === "loading"}
-        className="w-full rounded-full bg-bone py-3 text-sm font-bold text-ink transition hover:bg-white disabled:opacity-60"
+        className="btn btn-primary w-full"
       >
         {state === "loading" ? "Enviando…" : "Enviar mensaje"}
       </button>

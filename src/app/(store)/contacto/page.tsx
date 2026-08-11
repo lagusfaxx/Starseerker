@@ -14,7 +14,7 @@ export default async function ContactPage() {
     <div className="container-page py-14">
       <div className="mx-auto grid max-w-4xl gap-10 lg:grid-cols-[1fr_1.2fr]">
         <div>
-          <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Hablemos</h1>
+          <h1 className="display text-3xl sm:text-4xl">Hablemos</h1>
           <p className="mt-3 text-sm leading-relaxed text-mute">
             Respondemos de lunes a viernes, de 9:00 a 18:00 h. Para temas de garantía incluye tu
             número de pedido.

@@ -25,7 +25,7 @@ export function AdminNav() {
             <li key={link.href}>
               <Link
                 href={link.href}
-                className={`block rounded-lg px-3 py-2 text-sm whitespace-nowrap transition ${
+                className={`block rounded-xs px-3 py-2 text-sm whitespace-nowrap transition ${
                   active ? "bg-bone font-semibold text-ink" : "text-mute hover:bg-white/5 hover:text-bone"
                 }`}
               >

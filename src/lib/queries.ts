@@ -31,6 +31,8 @@ export type ProductQuery = {
   search?: string;
   sort?: "recomendados" | "precio-asc" | "precio-desc" | "nuevos";
   onlyInStock?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
   take?: number;
   skip?: number;
 };
@@ -40,6 +42,13 @@ export function buildWhere(query: ProductQuery): Prisma.ProductWhereInput {
 
   if (query.categorySlug) where.category = { slug: query.categorySlug };
   if (query.onlyInStock) where.stock = { gt: 0 };
+
+  if (query.minPrice != null || query.maxPrice != null) {
+    where.price = {
+      ...(query.minPrice != null ? { gte: query.minPrice } : {}),
+      ...(query.maxPrice != null ? { lte: query.maxPrice } : {}),
+    };
+  }
 
   switch (query.filter) {
     case "nuevos":

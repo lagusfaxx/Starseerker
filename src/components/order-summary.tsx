@@ -25,7 +25,7 @@ export const STATUS_TONE: Record<Order["status"], string> = {
 export function StatusBadge({ status }: { status: Order["status"] }) {
   return (
     <span
-      className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_TONE[status]}`}
+      className={`inline-block border px-2.5 py-1 text-[11px] font-semibold tracking-wide ${STATUS_TONE[status]}`}
     >
       {STATUS_LABEL[status]}
     </span>
@@ -39,12 +39,12 @@ export function OrderSummary({
 }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-      <div className="card-surface p-6">
-        <h2 className="text-sm font-bold tracking-[0.14em] uppercase">Productos</h2>
+      <div className="panel p-6">
+        <h2 className="eyebrow text-bone">Productos</h2>
         <ul className="mt-4 divide-y divide-ink-line">
           {order.items.map((item) => (
             <li key={item.id} className="flex gap-4 py-4">
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-white">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xs bg-white">
                 {item.image && (
                   <Image
                     src={item.image}
@@ -91,8 +91,8 @@ export function OrderSummary({
       </div>
 
       <div className="space-y-6">
-        <div className="card-surface p-6">
-          <h2 className="text-sm font-bold tracking-[0.14em] uppercase">Despacho</h2>
+        <div className="panel p-6">
+          <h2 className="eyebrow text-bone">Despacho</h2>
           <p className="mt-3 text-sm leading-relaxed text-bone/85">
             {order.firstName} {order.lastName}
             <br />
@@ -113,7 +113,7 @@ export function OrderSummary({
             <p className="mt-3 text-xs text-mute">Plazo estimado: {order.shippingEta}</p>
           )}
           {order.trackingCode && (
-            <div className="mt-4 rounded-lg border border-ink-line px-3 py-2 text-xs">
+            <div className="mt-4 rounded-xs border border-ink-line px-3 py-2 text-xs">
               <p className="font-semibold">{order.trackingCarrier ?? "Courier"}</p>
               <p className="text-mute">Seguimiento: {order.trackingCode}</p>
               {order.trackingUrl && (
@@ -131,8 +131,8 @@ export function OrderSummary({
         </div>
 
         {order.events && order.events.length > 0 && (
-          <div className="card-surface p-6">
-            <h2 className="text-sm font-bold tracking-[0.14em] uppercase">Historial</h2>
+          <div className="panel p-6">
+            <h2 className="eyebrow text-bone">Historial</h2>
             <ol className="mt-4 space-y-3 text-xs">
               {order.events.map((event) => (
                 <li key={event.id} className="border-l border-ink-line pl-3">

@@ -59,7 +59,7 @@ export default async function CheckoutResultPage({
 
       <div className="mx-auto max-w-3xl text-center">
         <StatusBadge status={order.status} />
-        <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">{copy.title}</h1>
+        <h1 className="mt-4 display text-3xl sm:text-4xl">{copy.title}</h1>
         <p className="mt-3 text-sm leading-relaxed text-mute">{copy.text}</p>
         <p className="mt-4 text-sm">
           Pedido <strong>{order.number}</strong>
@@ -68,13 +68,13 @@ export default async function CheckoutResultPage({
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
             href={`/pedido/${order.number}?token=${order.publicToken}`}
-            className="rounded-full bg-bone px-6 py-3 text-sm font-bold text-ink"
+            className="btn btn-primary"
           >
             Ver estado del pedido
           </Link>
           <Link
             href="/productos"
-            className="rounded-full border border-ink-line px-6 py-3 text-sm font-semibold hover:border-bone"
+            className="btn btn-outline"
           >
             Seguir comprando
           </Link>

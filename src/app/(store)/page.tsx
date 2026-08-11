@@ -4,25 +4,30 @@ import { ProductGrid } from "@/components/product-grid";
 import { safeListCategories, safeListProducts } from "@/lib/queries";
 import { getSettings } from "@/lib/settings";
 import { formatCLP } from "@/lib/format";
+import { ArrowRightIcon, BoxIcon, CardIcon, ShieldIcon, TruckIcon } from "@/components/icons";
 
 export const revalidate = 120;
 
-const BENEFITS = [
+const SERVICES = [
   {
-    title: "Distribuidor oficial",
-    text: "Importamos directo desde STARSEEKER. Productos originales con garantía respaldada en Chile.",
+    Icon: BoxIcon,
+    title: "Importación directa",
+    text: "Stock en Chile, ingresado por canales formales y con documentación al día.",
   },
   {
-    title: "Despacho a todo Chile",
-    text: "Desde Arica a Punta Arenas, con tarifas y plazos claros por región antes de pagar.",
+    Icon: TruckIcon,
+    title: "Despacho a 16 regiones",
+    text: "Tarifa y plazo visibles antes de pagar, según la comuna de destino.",
   },
   {
-    title: "Paga como quieras",
-    text: "Débito, crédito en cuotas y transferencia a través de Mercado Pago con protección al comprador.",
+    Icon: CardIcon,
+    title: "Pago en cuotas",
+    text: "Débito, crédito y transferencia mediante Mercado Pago.",
   },
   {
-    title: "Servicio técnico local",
-    text: "Repuestos y soporte en Chile: no necesitas enviar tu equipo al extranjero.",
+    Icon: ShieldIcon,
+    title: "Garantía y servicio local",
+    text: "Repuestos y soporte técnico en el país, sin envíos al extranjero.",
   },
 ];
 
@@ -35,16 +40,16 @@ export default async function HomePage() {
     safeListCategories(),
   ]);
 
-  const heroProducts = featured.products.length > 0 ? featured : newArrivals;
+  const highlighted = featured.products.length > 0 ? featured.products : newArrivals.products;
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative isolate overflow-hidden border-b border-ink-line">
-        <div className="absolute inset-0 -z-10">
+      {/* Portada */}
+      <section className="relative isolate border-b border-ink-line">
+        <div className="absolute inset-0 -z-10 overflow-hidden">
           {settings.heroVideoUrl ? (
             <video
-              className="h-full w-full object-cover opacity-55"
+              className="h-full w-full object-cover opacity-45"
               src={settings.heroVideoUrl}
               poster={settings.heroPosterUrl || undefined}
               autoPlay
@@ -52,46 +57,70 @@ export default async function HomePage() {
               loop
               playsInline
             />
+          ) : settings.heroPosterUrl ? (
+            <Image
+              src={settings.heroPosterUrl}
+              alt=""
+              fill
+              priority
+              className="object-cover opacity-45"
+            />
           ) : (
-            <div className="h-full w-full bg-[radial-gradient(120%_120%_at_50%_0%,#26262a_0%,#0b0b0c_60%)]" />
+            <div className="h-full w-full bg-ink-soft" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-ink/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/85 to-ink/40" />
         </div>
 
-        <div className="container-page flex min-h-[62vh] flex-col justify-end py-20 sm:min-h-[70vh]">
-          <p className="animate-fade-up text-xs font-semibold tracking-[0.3em] text-accent uppercase">
-            {settings.tagline}
-          </p>
-          <h1 className="animate-fade-up mt-4 max-w-3xl text-4xl leading-[1.05] font-black tracking-tight text-balance sm:text-6xl">
-            {settings.heroTitle}
-          </h1>
-          <p className="animate-fade-up mt-5 max-w-xl text-base leading-relaxed text-bone/80">
-            {settings.heroSubtitle}
-          </p>
-          <div className="animate-fade-up mt-8 flex flex-wrap gap-3">
-            <Link
-              href={settings.heroCtaHref}
-              className="rounded-full bg-bone px-7 py-3.5 text-sm font-bold text-ink transition hover:bg-white"
-            >
-              {settings.heroCtaLabel}
-            </Link>
-            <Link
-              href="/ayuda/despachos"
-              className="rounded-full border border-bone/30 px-7 py-3.5 text-sm font-semibold transition hover:border-bone"
-            >
-              Ver costos de despacho
-            </Link>
+        <div className="container-page grid min-h-[30rem] items-center gap-10 py-20 lg:min-h-[34rem] lg:grid-cols-[1.1fr_1fr]">
+          <div>
+            <p className="eyebrow">{settings.tagline}</p>
+            <h1 className="display mt-5 max-w-2xl text-[2.5rem] sm:text-[3.25rem] lg:text-[3.75rem]">
+              {settings.heroTitle}
+            </h1>
+            <p className="mt-6 max-w-lg text-[15px] leading-relaxed text-bone/75">
+              {settings.heroSubtitle}
+            </p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href={settings.heroCtaHref} className="btn btn-primary">
+                {settings.heroCtaLabel}
+              </Link>
+              <Link href="/ayuda/despachos" className="btn btn-outline">
+                Costos de despacho
+              </Link>
+            </div>
           </div>
+
+          <dl className="grid max-w-md grid-cols-2 gap-px self-end border border-ink-line bg-ink-line lg:justify-self-end">
+            {[
+              { label: "Regiones con cobertura", value: "16" },
+              { label: "Garantía oficial", value: "12 meses" },
+              { label: "Despacho en RM", value: "24-48 h" },
+              {
+                label: "Envío gratis desde",
+                value: settings.freeShippingThreshold
+                  ? formatCLP(settings.freeShippingThreshold)
+                  : "—",
+              },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-ink px-5 py-6">
+                <dt className="eyebrow text-[10px]">{stat.label}</dt>
+                <dd className="tnum mt-2 text-xl font-semibold">{stat.value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
-      {/* Beneficios */}
+      {/* Servicios */}
       <section className="border-b border-ink-line bg-ink-soft">
-        <div className="container-page grid gap-6 py-10 sm:grid-cols-2 lg:grid-cols-4">
-          {BENEFITS.map((benefit) => (
-            <div key={benefit.title}>
-              <h2 className="text-sm font-bold">{benefit.title}</h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-mute">{benefit.text}</p>
+        <div className="container-page grid gap-8 py-9 sm:grid-cols-2 lg:grid-cols-4">
+          {SERVICES.map(({ Icon, title, text }) => (
+            <div key={title} className="flex gap-3.5">
+              <Icon size={22} className="mt-0.5 shrink-0 text-accent" />
+              <div>
+                <h2 className="text-[13px] font-semibold">{title}</h2>
+                <p className="mt-1 text-xs leading-relaxed text-mute">{text}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -100,34 +129,39 @@ export default async function HomePage() {
       {/* Categorías */}
       {categories.length > 0 && (
         <section className="container-page py-16">
-          <SectionHeading
-            eyebrow="Colecciones"
-            title="Encuentra tu equipo"
+          <SectionHeader
+            title="Comprar por categoría"
             href="/productos"
-            linkLabel="Ver todo"
+            linkLabel="Ver el catálogo completo"
           />
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-7 grid gap-px border border-ink-line bg-ink-line sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => (
               <Link
                 key={category.id}
                 href={`/coleccion/${category.slug}`}
-                className="group relative aspect-[16/10] overflow-hidden rounded-2xl border border-ink-line bg-ink-soft"
+                className="group relative flex aspect-[16/9] flex-col justify-end overflow-hidden bg-ink p-6"
               >
                 {category.image && (
                   <Image
                     src={category.image}
-                    alt={category.name}
+                    alt=""
                     fill
                     sizes="(max-width: 1024px) 100vw, 33vw"
-                    className="object-cover opacity-70 transition duration-500 group-hover:scale-105 group-hover:opacity-90"
+                    className="object-cover opacity-45 transition duration-500 group-hover:scale-[1.03] group-hover:opacity-60"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-5">
-                  <h3 className="text-lg font-bold">{category.name}</h3>
+                <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/50 to-transparent" />
+                <div className="relative">
+                  <h3 className="text-lg font-semibold">{category.name}</h3>
                   {category.description && (
-                    <p className="mt-1 line-clamp-2 text-xs text-bone/70">{category.description}</p>
+                    <p className="mt-1 line-clamp-2 max-w-sm text-xs text-bone/65">
+                      {category.description}
+                    </p>
                   )}
+                  <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-accent uppercase">
+                    Ver productos
+                    <ArrowRightIcon size={14} />
+                  </span>
                 </div>
               </Link>
             ))}
@@ -136,118 +170,115 @@ export default async function HomePage() {
       )}
 
       {/* Destacados */}
-      <section className="container-page py-8">
-        <SectionHeading
-          eyebrow="Selección STARSEEKER"
-          title="Destacados de la temporada"
+      <section className="container-page pb-16">
+        <SectionHeader
+          title="Selección destacada"
           href="/productos"
-          linkLabel="Ver toda la tienda"
+          linkLabel="Ver todos los productos"
         />
-        <div className="mt-8">
+        <div className="mt-7">
           <ProductGrid
-            products={heroProducts.products}
-            emptyMessage="Aún no hay productos publicados. Cárgalos desde el panel de administración."
+            products={highlighted}
+            emptyMessage="Todavía no hay productos publicados. Cárgalos desde el panel de administración."
           />
         </div>
       </section>
 
-      {/* Nuevos */}
+      {/* Novedades */}
       {newArrivals.products.length > 0 && (
-        <section className="container-page py-16">
-          <SectionHeading
-            eyebrow="Recién llegados"
-            title="Nuevos lanzamientos"
-            href="/productos?filtro=nuevos"
-            linkLabel="Ver novedades"
-          />
-          <div className="mt-8">
-            <ProductGrid products={newArrivals.products} />
+        <section className="border-t border-ink-line">
+          <div className="container-page py-16">
+            <SectionHeader
+              title="Últimos lanzamientos"
+              href="/productos?filtro=nuevos"
+              linkLabel="Ver novedades"
+            />
+            <div className="mt-7">
+              <ProductGrid products={newArrivals.products} />
+            </div>
           </div>
         </section>
       )}
 
       {/* Más vendidos */}
       {bestSellers.products.length > 0 && (
-        <section className="container-page py-8">
-          <SectionHeading
-            eyebrow="Los favoritos"
-            title="Más vendidos en Chile"
-            href="/productos?filtro=mas-vendidos"
-            linkLabel="Ver ranking"
-          />
-          <div className="mt-8">
-            <ProductGrid products={bestSellers.products} />
+        <section className="border-t border-ink-line">
+          <div className="container-page py-16">
+            <SectionHeader
+              title="Los más vendidos"
+              href="/productos?filtro=mas-vendidos"
+              linkLabel="Ver ranking"
+            />
+            <div className="mt-7">
+              <ProductGrid products={bestSellers.products} />
+            </div>
           </div>
         </section>
       )}
 
-      {/* Envíos */}
-      <section className="container-page py-20">
-        <div className="card-surface grid gap-8 p-8 lg:grid-cols-2 lg:p-12">
+      {/* Despachos */}
+      <section className="border-t border-ink-line bg-ink-soft">
+        <div className="container-page grid gap-10 py-16 lg:grid-cols-2">
           <div>
-            <p className="text-xs font-semibold tracking-[0.24em] text-accent uppercase">
-              Despachos
-            </p>
-            <h2 className="mt-3 text-2xl font-bold sm:text-3xl">
-              Tarifas claras para las 16 regiones
-            </h2>
-            <p className="mt-4 text-sm leading-relaxed text-mute">
-              Configuramos el costo y el plazo de entrega por región. Antes de pagar ves exactamente
-              cuánto cuesta llegar a tu comuna
+            <p className="eyebrow">Despachos</p>
+            <h2 className="display mt-3 text-3xl">Tarifas por región, sin sorpresas</h2>
+            <p className="mt-5 max-w-lg text-sm leading-relaxed text-mute">
+              El costo de envío se calcula según la región de destino y se muestra completo antes
+              de pagar
               {settings.freeShippingThreshold
-                ? `, y sobre ${formatCLP(settings.freeShippingThreshold)} el despacho es gratis.`
+                ? `. Sobre ${formatCLP(settings.freeShippingThreshold)} el despacho es gratis en gran parte del país.`
                 : "."}
             </p>
-            <Link
-              href="/ayuda/despachos"
-              className="mt-6 inline-block rounded-full border border-ink-line px-6 py-3 text-sm font-semibold transition hover:border-bone"
-            >
+            <Link href="/ayuda/despachos" className="btn btn-outline mt-7">
               Ver tabla de despachos
             </Link>
           </div>
-          <ul className="grid gap-3 text-sm sm:grid-cols-2">
-            {[
-              "Retiro gratis en Santiago",
-              "Entrega en 24-48 h en RM",
-              "Cobertura en regiones extremas",
-              "Seguimiento por correo",
-            ].map((item) => (
-              <li
-                key={item}
-                className="rounded-xl border border-ink-line bg-ink px-4 py-3 text-bone/85"
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
+
+          <table className="w-full self-start border border-ink-line text-sm">
+            <thead>
+              <tr className="border-b border-ink-line text-left">
+                <th className="eyebrow px-4 py-3 font-semibold">Zona</th>
+                <th className="eyebrow px-4 py-3 font-semibold">Plazo estimado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink-line">
+              {[
+                ["Región Metropolitana", "1 a 2 días hábiles"],
+                ["Zona centro", "2 a 4 días hábiles"],
+                ["Zona norte y sur", "3 a 6 días hábiles"],
+                ["Aysén y Magallanes", "5 a 12 días hábiles"],
+              ].map(([zone, eta]) => (
+                <tr key={zone}>
+                  <td className="px-4 py-3">{zone}</td>
+                  <td className="px-4 py-3 text-mute">{eta}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
     </>
   );
 }
 
-function SectionHeading({
-  eyebrow,
+function SectionHeader({
   title,
   href,
   linkLabel,
 }: {
-  eyebrow: string;
   title: string;
   href: string;
   linkLabel: string;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p className="text-xs font-semibold tracking-[0.24em] text-accent uppercase">{eyebrow}</p>
-        <h2 className="mt-2 text-2xl font-bold sm:text-3xl">{title}</h2>
-      </div>
+    <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-ink-line pb-4">
+      <h2 className="display text-2xl">{title}</h2>
       <Link
         href={href}
-        className="text-sm font-semibold text-mute underline underline-offset-4 transition hover:text-bone"
+        className="link-quiet inline-flex items-center gap-1.5 text-[13px] font-medium"
       >
         {linkLabel}
+        <ArrowRightIcon size={15} />
       </Link>
     </div>
   );

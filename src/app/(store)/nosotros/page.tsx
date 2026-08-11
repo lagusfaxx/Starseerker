@@ -32,7 +32,7 @@ export default async function AboutPage() {
         <p className="text-xs font-semibold tracking-[0.28em] text-accent uppercase">
           {settings.tagline}
         </p>
-        <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-5xl">
+        <h1 className="mt-4 display text-3xl sm:text-5xl">
           Café de especialidad, sin fronteras
         </h1>
         <p className="mt-6 text-base leading-relaxed text-bone/80">
@@ -49,7 +49,7 @@ export default async function AboutPage() {
 
         <div className="mt-12 grid gap-6 sm:grid-cols-3">
           {PILLARS.map((pillar) => (
-            <div key={pillar.title} className="card-surface p-5">
+            <div key={pillar.title} className="panel p-5">
               <h2 className="text-sm font-bold">{pillar.title}</h2>
               <p className="mt-2 text-xs leading-relaxed text-mute">{pillar.text}</p>
             </div>
@@ -59,13 +59,13 @@ export default async function AboutPage() {
         <div className="mt-12 flex flex-wrap gap-3">
           <Link
             href="/productos"
-            className="rounded-full bg-bone px-7 py-3 text-sm font-bold text-ink"
+            className="btn btn-primary"
           >
             Ver la colección
           </Link>
           <Link
             href="/contacto"
-            className="rounded-full border border-ink-line px-7 py-3 text-sm font-semibold hover:border-bone"
+            className="btn btn-outline"
           >
             Hablar con el equipo
           </Link>

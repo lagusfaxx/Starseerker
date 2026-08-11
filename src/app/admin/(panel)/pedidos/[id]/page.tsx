@@ -5,6 +5,7 @@ import { OrderSummary, StatusBadge, STATUS_LABEL } from "@/components/order-summ
 import { addOrderNote, updateOrder } from "@/app/admin/actions";
 import { formatDateTime } from "@/lib/format";
 import type { OrderStatus } from "@prisma/client";
+import { ArrowLeftIcon, ExternalIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,9 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
 
   return (
     <div>
-      <Link href="/admin/pedidos" className="text-xs text-mute hover:text-bone">
-        ← Volver a pedidos
+      <Link href="/admin/pedidos" className="link-quiet inline-flex items-center gap-1.5 text-xs">
+        <ArrowLeftIcon size={14} />
+        Volver a pedidos
       </Link>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
@@ -45,14 +47,15 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
           <Link
             href={`/pedido/${order.number}?token=${order.publicToken}`}
             target="_blank"
-            className="text-xs text-mute hover:text-bone"
+            className="link-quiet inline-flex items-center gap-1.5 text-xs"
           >
-            Ver como cliente ↗
+            Ver como cliente
+            <ExternalIcon size={13} />
           </Link>
         </div>
       </div>
 
-      <div className="card-surface mt-6 p-5">
+      <div className="panel mt-6 p-5">
         <h2 className="text-sm font-bold">Gestión</h2>
         <form action={updateOrder} className="mt-4 grid gap-4 lg:grid-cols-5">
           <input type="hidden" name="id" value={order.id} />
@@ -89,11 +92,11 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
                 type="checkbox"
                 name="notify"
                 defaultChecked
-                className="h-4 w-4 accent-[#d7b56d]"
+                className="h-4 w-4 "
               />
               Avisar por correo al despachar
             </label>
-            <button className="rounded-full bg-bone py-2.5 text-sm font-bold text-ink">
+            <button className="btn btn-primary w-full">
               Guardar
             </button>
           </div>
@@ -113,7 +116,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
         <OrderSummary order={order} />
       </div>
 
-      <div className="card-surface mt-6 p-5">
+      <div className="panel mt-6 p-5">
         <h2 className="text-sm font-bold">Nota interna</h2>
         <form action={addOrderNote} className="mt-3 flex gap-2">
           <input type="hidden" name="orderId" value={order.id} />
@@ -123,7 +126,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
             className="field flex-1"
             required
           />
-          <button className="rounded-xl border border-ink-line px-5 text-xs font-semibold hover:border-bone">
+          <button className="rounded-xs border border-ink-line px-5 text-xs font-semibold hover:border-bone">
             Agregar
           </button>
         </form>

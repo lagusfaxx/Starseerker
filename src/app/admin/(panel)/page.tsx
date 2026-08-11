@@ -76,7 +76,7 @@ export default async function AdminDashboard() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <div key={card.label} className="card-surface p-5">
+          <div key={card.label} className="panel p-5">
             <p className="text-xs text-mute">{card.label}</p>
             <p className="mt-2 text-2xl font-bold">{card.value}</p>
             <p className="mt-1 text-xs text-mute">{card.hint}</p>
@@ -85,7 +85,7 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-        <section className="card-surface overflow-hidden">
+        <section className="panel overflow-hidden">
           <header className="flex items-center justify-between border-b border-ink-line px-5 py-4">
             <h2 className="text-sm font-bold">Últimos pedidos</h2>
             <Link href="/admin/pedidos" className="text-xs text-mute hover:text-bone">
@@ -119,7 +119,7 @@ export default async function AdminDashboard() {
           )}
         </section>
 
-        <section className="card-surface overflow-hidden">
+        <section className="panel overflow-hidden">
           <header className="flex items-center justify-between border-b border-ink-line px-5 py-4">
             <h2 className="text-sm font-bold">Stock bajo</h2>
             <Link href="/admin/productos" className="text-xs text-mute hover:text-bone">

@@ -9,12 +9,14 @@ export function ProductGrid({
 }) {
   if (products.length === 0) {
     return (
-      <div className="card-surface px-6 py-16 text-center text-sm text-mute">{emptyMessage}</div>
+      <div className="border border-ink-line px-6 py-20 text-center text-sm text-mute">
+        {emptyMessage}
+      </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-x-5 gap-y-9 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 border-t border-l border-ink-line lg:grid-cols-3 xl:grid-cols-4">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}

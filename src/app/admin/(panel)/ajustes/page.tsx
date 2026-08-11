@@ -14,7 +14,42 @@ export default async function AdminSettingsPage() {
       </p>
 
       <form action={updateSettings} className="mt-8 space-y-8">
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
+          <h2 className="text-sm font-bold">Logo</h2>
+          <p className="text-xs text-mute">
+            Deja el archivo en <code className="text-bone">public/</code> y escribe la ruta
+            (por ejemplo <code className="text-bone">/logo.svg</code>), o pega una URL completa.
+            Si lo dejas vacío se usa el logotipo tipográfico.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+            <Text name="logoUrl" label="Archivo o URL del logo" value={settings.logoUrl} />
+            <div>
+              <label className="field-label">Alto en la cabecera (px)</label>
+              <input
+                name="logoHeight"
+                type="number"
+                min={12}
+                max={80}
+                defaultValue={settings.logoHeight}
+                className="field"
+              />
+            </div>
+          </div>
+          {settings.logoUrl && (
+            <div className="border border-ink-line p-4">
+              <p className="field-label">Vista previa</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={settings.logoUrl}
+                alt="Logo actual"
+                style={{ height: settings.logoHeight }}
+                className="w-auto"
+              />
+            </div>
+          )}
+        </section>
+
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Identidad</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Text name="storeName" label="Nombre de la tienda" value={settings.storeName} />
@@ -28,7 +63,7 @@ export default async function AdminSettingsPage() {
           </div>
         </section>
 
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Portada</h2>
           <div className="grid gap-4">
             <Text name="heroTitle" label="Título principal" value={settings.heroTitle} />
@@ -54,7 +89,7 @@ export default async function AdminSettingsPage() {
           </div>
         </section>
 
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Barra de anuncios</h2>
           <Text name="announcement" label="Mensaje" value={settings.announcement} />
           <label className="flex items-center gap-2 text-xs text-mute">
@@ -62,13 +97,13 @@ export default async function AdminSettingsPage() {
               type="checkbox"
               name="announcementActive"
               defaultChecked={settings.announcementActive}
-              className="h-4 w-4 accent-[#d7b56d]"
+              className="h-4 w-4 "
             />
             Mostrar la barra en la tienda
           </label>
         </section>
 
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Reglas comerciales</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -98,7 +133,7 @@ export default async function AdminSettingsPage() {
           </div>
         </section>
 
-        <button className="rounded-full bg-bone px-7 py-3 text-sm font-bold text-ink">
+        <button className="btn btn-primary">
           Guardar ajustes
         </button>
       </form>

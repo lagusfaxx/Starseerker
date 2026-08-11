@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { destroySession, getSession } from "@/lib/auth";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { ExternalIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <aside className="border-b border-ink-line bg-ink-soft lg:w-64 lg:shrink-0 lg:border-r lg:border-b-0">
         <div className="flex items-center justify-between px-5 py-5 lg:block">
           <Link href="/admin" className="block">
-            <p className="text-sm font-black tracking-[0.2em]">STARSEEKER</p>
+            <p className="text-sm font-semibold tracking-[0.22em]">STARSEEKER</p>
             <p className="mt-0.5 text-[11px] text-mute">Panel de administración</p>
           </Link>
         </div>
@@ -31,8 +32,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <p className="truncate font-medium">{session.name}</p>
           <p className="truncate text-mute">{session.email}</p>
           <div className="mt-3 flex items-center gap-3">
-            <Link href="/" className="text-mute hover:text-bone" target="_blank">
-              Ver tienda ↗
+            <Link
+              href="/"
+              className="link-quiet inline-flex items-center gap-1.5"
+              target="_blank"
+            >
+              Ver tienda
+              <ExternalIcon size={13} />
             </Link>
             <form action={logout}>
               <button className="text-mute hover:text-bone">Cerrar sesión</button>

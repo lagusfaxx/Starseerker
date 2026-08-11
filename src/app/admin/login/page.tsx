@@ -31,11 +31,11 @@ export default async function AdminLoginPage({
     <div className="grid min-h-screen place-items-center px-5">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <p className="text-lg font-black tracking-[0.24em]">STARSEEKER</p>
+          <p className="text-lg font-semibold tracking-[0.26em]">STARSEEKER</p>
           <p className="mt-1 text-xs text-mute">Panel de administración</p>
         </div>
 
-        <form action={login} className="card-surface space-y-4 p-6">
+        <form action={login} className="panel space-y-4 p-6">
           <input type="hidden" name="next" value={next ?? "/admin"} />
           <div>
             <label className="field-label" htmlFor="email">
@@ -65,14 +65,14 @@ export default async function AdminLoginPage({
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            <p className="rounded-xs border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
               Credenciales incorrectas.
             </p>
           )}
 
           <button
             type="submit"
-            className="w-full rounded-full bg-bone py-3 text-sm font-bold text-ink transition hover:bg-white"
+            className="btn btn-primary w-full"
           >
             Entrar
           </button>

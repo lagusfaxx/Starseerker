@@ -157,7 +157,7 @@ export function CheckoutClient({
         <h1 className="text-2xl font-bold">No hay productos para pagar</h1>
         <Link
           href="/productos"
-          className="mt-6 inline-block rounded-full bg-bone px-7 py-3 text-sm font-bold text-ink"
+          className="mt-6 inline-block btn btn-primary"
         >
           Ver productos
         </Link>
@@ -167,7 +167,7 @@ export function CheckoutClient({
 
   return (
     <div className="container-page py-12">
-      <h1 className="text-3xl font-black tracking-tight">Finalizar compra</h1>
+      <h1 className="display text-3xl">Finalizar compra</h1>
       <p className="mt-2 text-sm text-mute">
         Pago seguro con Mercado Pago. ¿Necesitas ayuda? Escríbenos a {supportEmail}.
       </p>
@@ -175,7 +175,7 @@ export function CheckoutClient({
       <form onSubmit={submit} className="mt-10 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-10">
           <section>
-            <h2 className="text-sm font-bold tracking-[0.14em] uppercase">1 · Tus datos</h2>
+            <h2 className="eyebrow text-bone">1 · Tus datos</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Field label="Nombre" value={form.firstName} onChange={(v) => update("firstName", v)} required />
               <Field label="Apellido" value={form.lastName} onChange={(v) => update("lastName", v)} required />
@@ -204,7 +204,7 @@ export function CheckoutClient({
           </section>
 
           <section>
-            <h2 className="text-sm font-bold tracking-[0.14em] uppercase">2 · Despacho</h2>
+            <h2 className="eyebrow text-bone">2 · Despacho</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="field-label">Región</label>
@@ -270,7 +270,7 @@ export function CheckoutClient({
               )}
               {loadingOptions && <p className="text-xs text-mute">Calculando opciones…</p>}
               {form.regionCode && !loadingOptions && options.length === 0 && (
-                <p className="rounded-xl border border-ink-line px-4 py-3 text-xs text-mute">
+                <p className="rounded-xs border border-ink-line px-4 py-3 text-xs text-mute">
                   Aún no tenemos tarifa configurada para esta región. Escríbenos a {supportEmail} y
                   la cotizamos contigo.
                 </p>
@@ -279,7 +279,7 @@ export function CheckoutClient({
                 {options.map((option) => (
                   <label
                     key={option.id}
-                    className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition ${
+                    className={`flex cursor-pointer items-start gap-3 rounded-xs border px-4 py-3 transition ${
                       selected?.id === option.id ? "border-accent bg-white/5" : "border-ink-line"
                     }`}
                   >
@@ -289,7 +289,7 @@ export function CheckoutClient({
                       value={option.id}
                       checked={selected?.id === option.id}
                       onChange={() => setRateId(option.id)}
-                      className="mt-1 accent-[#d7b56d]"
+                      className="mt-1 "
                     />
                     <span className="flex-1">
                       <span className="flex items-center justify-between gap-3 text-sm font-semibold">
@@ -310,13 +310,13 @@ export function CheckoutClient({
           </section>
         </div>
 
-        <aside className="card-surface h-fit p-6 lg:sticky lg:top-28">
-          <h2 className="text-sm font-bold tracking-[0.14em] uppercase">Tu pedido</h2>
+        <aside className="panel h-fit p-6 lg:sticky lg:top-28">
+          <h2 className="eyebrow text-bone">Tu pedido</h2>
 
           <ul className="mt-4 space-y-3">
             {items.map((item) => (
               <li key={item.productId} className="flex gap-3">
-                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-white">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xs bg-white">
                   {item.image && (
                     <Image
                       src={item.image}
@@ -350,7 +350,7 @@ export function CheckoutClient({
               <button
                 type="button"
                 onClick={applyCoupon}
-                className="rounded-xl border border-ink-line px-4 text-xs font-semibold hover:border-bone"
+                className="rounded-xs border border-ink-line px-4 text-xs font-semibold hover:border-bone"
               >
                 Aplicar
               </button>
@@ -381,7 +381,7 @@ export function CheckoutClient({
           )}
 
           {error && (
-            <p className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            <p className="mt-4 rounded-xs border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
               {error}
             </p>
           )}
@@ -389,7 +389,7 @@ export function CheckoutClient({
           <button
             type="submit"
             disabled={submitting || !selected}
-            className="mt-5 w-full rounded-full bg-bone py-3.5 text-sm font-bold text-ink transition hover:bg-white disabled:opacity-50"
+            className="mt-5 btn btn-primary w-full"
           >
             {submitting ? "Redirigiendo a Mercado Pago…" : "Pagar con Mercado Pago"}
           </button>

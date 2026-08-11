@@ -370,6 +370,8 @@ export async function updateSettings(formData: FormData) {
 
   const patch: Partial<StoreSettings> = {
     storeName: str(formData, "storeName"),
+    logoUrl: str(formData, "logoUrl"),
+    logoHeight: int(formData, "logoHeight", 28),
     tagline: str(formData, "tagline"),
     supportEmail: str(formData, "supportEmail"),
     salesEmail: str(formData, "salesEmail"),

@@ -69,6 +69,19 @@ Sin `RESEND_API_KEY` la tienda funciona igual: los correos se omiten y quedan en
 
 ---
 
+## Marca y diseño
+
+La interfaz no usa emojis ni iconos de terceros: todos los iconos son SVG propios en
+`src/components/icons.tsx`, dibujados con `currentColor`. El sistema visual vive en
+`src/app/globals.css` (tokens de color, tipografía, `btn`, `field`, `panel`, `eyebrow`).
+
+**Para poner el logo:** deja el archivo en `public/` — por ejemplo `public/logo.svg` — y en
+**Admin → Ajustes → Logo** escribe la ruta `/logo.svg` y el alto en píxeles. También acepta
+una URL completa si lo alojas en un CDN. Mientras no haya logo cargado se muestra el
+logotipo tipográfico "STARSEEKER CHILE", sin placeholders ni marcas de agua.
+
+---
+
 ## Mercado Pago
 
 Se usa **Checkout Pro**: el checkout crea el pedido, genera una preferencia y redirige a
@@ -125,6 +138,7 @@ El seed deja cinco zonas cubriendo las 16 regiones (RM, centro, norte, sur y zon
 | `npm run db:seed` | Datos iniciales. |
 | `npm run db:studio` | Prisma Studio. |
 | `npm run smoke` | Prueba de humo end-to-end con Playwright sobre una instancia levantada. |
+| `npm run shots` | Capturas de las pantallas principales (escritorio y móvil) para revisar el diseño. |
 
 ---
 

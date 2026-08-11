@@ -18,14 +18,14 @@ export default async function AdminMessagesPage() {
         <section className="space-y-4">
           <h2 className="text-sm font-bold">Formulario de contacto</h2>
           {messages.length === 0 && (
-            <p className="card-surface px-5 py-10 text-center text-sm text-mute">
+            <p className="panel px-5 py-10 text-center text-sm text-mute">
               Sin mensajes por ahora.
             </p>
           )}
           {messages.map((message) => (
             <article
               key={message.id}
-              className={`card-surface p-5 ${message.handled ? "opacity-60" : ""}`}
+              className={`panel p-5 ${message.handled ? "opacity-60" : ""}`}
             >
               <header className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -38,7 +38,7 @@ export default async function AdminMessagesPage() {
                 </div>
                 <form action={markMessageHandled}>
                   <input type="hidden" name="id" value={message.id} />
-                  <button className="rounded-full border border-ink-line px-3 py-1 text-xs hover:border-bone">
+                  <button className="btn btn-outline btn-sm">
                     {message.handled ? "Marcar pendiente" : "Marcar resuelto"}
                   </button>
                 </form>
@@ -58,7 +58,7 @@ export default async function AdminMessagesPage() {
 
         <section>
           <h2 className="text-sm font-bold">Suscriptores ({subscribers.length})</h2>
-          <div className="card-surface mt-4 max-h-[560px] overflow-y-auto">
+          <div className="panel mt-4 max-h-[560px] overflow-y-auto">
             <ul className="divide-y divide-ink-line text-xs">
               {subscribers.length === 0 && (
                 <li className="px-4 py-8 text-center text-mute">Sin suscriptores.</li>

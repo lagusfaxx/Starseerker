@@ -6,7 +6,7 @@ import { getSettings } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
 
 async function navLinks(): Promise<NavLink[]> {
-  const links: NavLink[] = [{ label: "Inicio", href: "/" }];
+  const links: NavLink[] = [];
   try {
     const categories = await prisma.category.findMany({
       where: { active: true },
@@ -14,13 +14,17 @@ async function navLinks(): Promise<NavLink[]> {
       take: 6,
       select: { slug: true, name: true },
     });
-    links.push(...categories.map((c) => ({ label: c.name, href: `/coleccion/${c.slug}` })));
+    links.push(...categories.map((category) => ({
+      label: category.name,
+      href: `/coleccion/${category.slug}`,
+    })));
   } catch {
     // Sin base de datos mostramos solo la navegación estática.
   }
   links.push(
-    { label: "Nuevos", href: "/productos?filtro=nuevos" },
+    { label: "Novedades", href: "/productos?filtro=nuevos" },
     { label: "Más vendidos", href: "/productos?filtro=mas-vendidos" },
+    { label: "Ofertas", href: "/productos?filtro=ofertas" },
     { label: "Centro de ayuda", href: "/ayuda" },
   );
   return links;
@@ -34,6 +38,10 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       <SiteHeader
         links={links}
         announcement={settings.announcementActive ? settings.announcement : null}
+        phone={settings.phone}
+        logoUrl={settings.logoUrl}
+        logoHeight={settings.logoHeight}
+        storeName={settings.storeName}
       />
       <main className="flex-1">{children}</main>
       <SiteFooter settings={settings} />

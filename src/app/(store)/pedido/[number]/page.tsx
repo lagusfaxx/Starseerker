@@ -28,7 +28,7 @@ export default async function OrderPage({
     <div className="container-page py-14">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Pedido {order.number}</h1>
+          <h1 className="display text-3xl">Pedido {order.number}</h1>
           <p className="mt-1 text-sm text-mute">Creado el {formatDateTime(order.createdAt)}</p>
         </div>
         <StatusBadge status={order.status} />

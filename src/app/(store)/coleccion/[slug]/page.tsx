@@ -46,6 +46,7 @@ export default async function CollectionPage({
       searchParams={search}
       title={category.name}
       description={category.description}
+      breadcrumb={[{ label: "Productos", href: "/productos" }]}
     />
   );
 }

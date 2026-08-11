@@ -26,7 +26,7 @@ export default async function AdminCouponsPage() {
       </p>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-        <div className="card-surface overflow-hidden">
+        <div className="panel overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-ink-line text-left text-xs text-mute">
               <tr>
@@ -83,7 +83,7 @@ export default async function AdminCouponsPage() {
           </table>
         </div>
 
-        <form action={saveCoupon} className="card-surface h-fit space-y-4 p-5">
+        <form action={saveCoupon} className="panel h-fit space-y-4 p-5">
           <h2 className="text-sm font-bold">Crear o actualizar cupón</h2>
           <div>
             <label className="field-label">Código</label>
@@ -126,11 +126,11 @@ export default async function AdminCouponsPage() {
               type="checkbox"
               name="active"
               defaultChecked
-              className="h-4 w-4 accent-[#d7b56d]"
+              className="h-4 w-4 "
             />
             Activo
           </label>
-          <button className="w-full rounded-full bg-bone py-2.5 text-sm font-bold text-ink">
+          <button className="btn btn-primary w-full">
             Guardar cupón
           </button>
         </form>

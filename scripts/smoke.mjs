@@ -41,7 +41,7 @@ log("visible en catálogo:", await page.locator("text=Producto de prueba QA").co
 await page.goto(`${BASE}/producto/producto-de-prueba-qa`);
 log("ficha:", await page.locator("h1").innerText(), "|", await page.locator("text=Bullet uno").count());
 await page.click('button:has-text("Agregar al carrito")');
-await page.waitForSelector('text=Ir a pagar');
+await page.waitForSelector('text=Finalizar compra');
 log("carrito abierto ok");
 
 // 5. Checkout: cotizar despacho

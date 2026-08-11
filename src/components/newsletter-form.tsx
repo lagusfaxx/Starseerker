@@ -42,7 +42,7 @@ export function NewsletterForm() {
         <button
           type="submit"
           disabled={state === "loading"}
-          className="rounded-xl bg-bone px-6 py-2.5 text-sm font-bold text-ink transition hover:bg-white disabled:opacity-60"
+          className="btn btn-primary shrink-0"
         >
           {state === "loading" ? "Enviando…" : "Suscribirme"}
         </button>

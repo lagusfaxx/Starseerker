@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { deleteProduct, saveProduct } from "@/app/admin/actions";
+import { ArrowLeftIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +39,12 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
 
   return (
     <div className="max-w-4xl">
-      <Link href="/admin/productos" className="text-xs text-mute hover:text-bone">
-        ← Volver a productos
+      <Link
+        href="/admin/productos"
+        className="link-quiet inline-flex items-center gap-1.5 text-xs"
+      >
+        <ArrowLeftIcon size={14} />
+        Volver a productos
       </Link>
       <h1 className="mt-3 text-2xl font-bold">
         {isNew ? "Nuevo producto" : `Editar: ${product!.name}`}
@@ -48,7 +53,7 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
       <form action={saveProduct} className="mt-6 space-y-8">
         {product && <input type="hidden" name="id" value={product.id} />}
 
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Información básica</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -104,7 +109,7 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
           </div>
         </section>
 
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Precio e inventario</h2>
           <div className="grid gap-4 sm:grid-cols-4">
             <div>
@@ -172,7 +177,7 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
                   type="checkbox"
                   name={flag.name}
                   defaultChecked={flag.value}
-                  className="h-4 w-4 accent-[#d7b56d]"
+                  className="h-4 w-4 "
                 />
                 {flag.label}
               </label>
@@ -180,7 +185,7 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
           </div>
         </section>
 
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Imágenes</h2>
           <p className="text-xs text-mute">
             Una URL por línea. La primera se usa como imagen principal en los listados.
@@ -194,7 +199,7 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
           />
         </section>
 
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Contenido de la ficha</h2>
           <div>
             <label className="field-label">Bullets destacados (uno por línea)</label>
@@ -218,7 +223,7 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
           </div>
         </section>
 
-        <section className="card-surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">SEO</h2>
           <div className="grid gap-4">
             <div>
@@ -238,7 +243,7 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
         </section>
 
         <div className="flex items-center gap-4">
-          <button className="rounded-full bg-bone px-7 py-3 text-sm font-bold text-ink">
+          <button className="btn btn-primary">
             {isNew ? "Crear producto" : "Guardar cambios"}
           </button>
           <Link href="/admin/productos" className="text-xs text-mute hover:text-bone">

@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 
 export type StoreSettings = {
   storeName: string;
+  /** URL o ruta del logo (ej. "/logo.svg"). Vacío = se usa el logotipo tipográfico. */
+  logoUrl: string;
+  /** Alto del logo en píxeles dentro de la cabecera. */
+  logoHeight: number;
   tagline: string;
   supportEmail: string;
   salesEmail: string;
@@ -24,6 +28,8 @@ export type StoreSettings = {
 
 export const DEFAULT_SETTINGS: StoreSettings = {
   storeName: "STARSEEKER Chile",
+  logoUrl: "",
+  logoHeight: 28,
   tagline: "Distribuidor oficial STARSEEKER en Chile",
   supportEmail: "soporte@starseerker.cl",
   salesEmail: "ventas@starseerker.cl",

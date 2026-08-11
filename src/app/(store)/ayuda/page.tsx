@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { HELP_PAGES } from "@/lib/content";
 import { getSettings } from "@/lib/settings";
+import { ChevronDownIcon } from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "Centro de ayuda",
@@ -53,7 +54,7 @@ export default async function HelpPage() {
       />
 
       <header className="mx-auto max-w-3xl text-center">
-        <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Centro de ayuda</h1>
+        <h1 className="display text-3xl sm:text-4xl">Centro de ayuda</h1>
         <p className="mt-3 text-sm text-mute">
           Todo sobre despachos, pagos, garantía y devoluciones. ¿No encuentras lo que buscas?
           Escríbenos a{" "}
@@ -69,7 +70,7 @@ export default async function HelpPage() {
           <Link
             key={page.slug}
             href={`/ayuda/${page.slug}`}
-            className="card-surface p-6 transition hover:border-bone/40"
+            className="panel p-6 transition hover:border-bone/40"
           >
             <h2 className="text-base font-bold">{page.title}</h2>
             <p className="mt-2 text-xs leading-relaxed text-mute">{page.summary}</p>
@@ -84,7 +85,7 @@ export default async function HelpPage() {
             <details key={item.q} className="group py-4">
               <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-semibold">
                 {item.q}
-                <span className="text-mute transition group-open:rotate-45">+</span>
+                <ChevronDownIcon size={17} className="shrink-0 text-mute transition group-open:rotate-180" />
               </summary>
               <p className="mt-3 text-sm leading-relaxed text-mute">{item.a}</p>
             </details>
@@ -95,7 +96,7 @@ export default async function HelpPage() {
       <div className="mx-auto mt-12 max-w-3xl text-center">
         <Link
           href="/contacto"
-          className="inline-block rounded-full bg-bone px-7 py-3 text-sm font-bold text-ink"
+          className="inline-block btn btn-primary"
         >
           Contactar al equipo
         </Link>

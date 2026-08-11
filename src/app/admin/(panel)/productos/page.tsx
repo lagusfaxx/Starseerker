@@ -47,14 +47,14 @@ export default async function AdminProductsPage({
           </form>
           <Link
             href="/admin/productos/nuevo"
-            className="rounded-full bg-bone px-5 py-2.5 text-sm font-bold text-ink"
+            className="btn btn-primary btn-sm"
           >
             Nuevo producto
           </Link>
         </div>
       </div>
 
-      <div className="card-surface mt-6 overflow-x-auto">
+      <div className="panel mt-6 overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="border-b border-ink-line text-left text-xs text-mute">
             <tr>
@@ -78,7 +78,7 @@ export default async function AdminProductsPage({
               <tr key={product.id} className="transition hover:bg-white/5">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-white">
+                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xs bg-white">
                       {product.images[0] && (
                         <Image
                           src={product.images[0].url}
@@ -120,7 +120,7 @@ export default async function AdminProductsPage({
                   <form action={toggleProductActive}>
                     <input type="hidden" name="id" value={product.id} />
                     <button
-                      className={`rounded-full border px-3 py-1 text-xs ${
+                      className={`border px-2.5 py-1 text-[11px] ${
                         product.active
                           ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
                           : "border-ink-line text-mute"
@@ -151,7 +151,7 @@ export default async function AdminProductsPage({
         </p>
 
         <div className="mt-5 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="card-surface overflow-hidden">
+          <div className="panel overflow-hidden">
             <ul className="divide-y divide-ink-line">
               {categories.length === 0 && (
                 <li className="px-5 py-8 text-center text-sm text-mute">Sin categorías aún.</li>
@@ -185,11 +185,11 @@ export default async function AdminProductsPage({
                           type="checkbox"
                           name="active"
                           defaultChecked={category.active}
-                          className="h-4 w-4 accent-[#d7b56d]"
+                          className="h-4 w-4 "
                         />
                         Activa
                       </label>
-                      <button className="rounded-full border border-ink-line px-4 py-1.5 text-xs hover:border-bone">
+                      <button className="btn btn-outline btn-sm">
                         Guardar
                       </button>
                     </div>
@@ -203,7 +203,7 @@ export default async function AdminProductsPage({
             </ul>
           </div>
 
-          <form action={saveCategory} className="card-surface h-fit space-y-3 p-5">
+          <form action={saveCategory} className="panel h-fit space-y-3 p-5">
             <h3 className="text-sm font-bold">Nueva categoría</h3>
             <div>
               <label className="field-label">Nombre</label>
@@ -226,11 +226,11 @@ export default async function AdminProductsPage({
                 type="checkbox"
                 name="active"
                 defaultChecked
-                className="h-4 w-4 accent-[#d7b56d]"
+                className="h-4 w-4 "
               />
               Activa
             </label>
-            <button className="w-full rounded-full bg-bone py-2.5 text-sm font-bold text-ink">
+            <button className="btn btn-primary w-full">
               Crear categoría
             </button>
           </form>

@@ -17,13 +17,13 @@ export function ShippingEstimator({ subtotal }: { subtotal: number }) {
     if (!code) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/shipping/quote", {
+      const response = await fetch("/api/shipping/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ regionCode: code, subtotal }),
       });
-      const data = await res.json();
-      setOptions(res.ok ? data.options : []);
+      const data = await response.json();
+      setOptions(response.ok ? data.options : []);
     } catch {
       setOptions([]);
     } finally {
@@ -32,18 +32,20 @@ export function ShippingEstimator({ subtotal }: { subtotal: number }) {
   }
 
   return (
-    <div className="rounded-xl border border-ink-line p-4">
-      <label className="field-label">Calcula tu despacho</label>
+    <div className="border border-ink-line p-4">
+      <label className="field-label" htmlFor="estimador-region">
+        Calcular despacho
+      </label>
       <select
+        id="estimador-region"
         value={region}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         className="field"
-        aria-label="Región de despacho"
       >
-        <option value="">Selecciona tu región…</option>
-        {REGIONS.map((r) => (
-          <option key={r.code} value={r.code}>
-            {r.name}
+        <option value="">Selecciona tu región</option>
+        {REGIONS.map((item) => (
+          <option key={item.code} value={item.code}>
+            {item.name}
           </option>
         ))}
       </select>
@@ -52,23 +54,26 @@ export function ShippingEstimator({ subtotal }: { subtotal: number }) {
 
       {options && options.length === 0 && !loading && (
         <p className="mt-3 text-xs text-mute">
-          Aún no tenemos tarifa configurada para esa región. Escríbenos y la cotizamos.
+          Todavía no hay tarifa configurada para esa región. Escríbenos y la cotizamos.
         </p>
       )}
 
       {options && options.length > 0 && (
-        <ul className="mt-3 space-y-2 text-xs">
-          {options.map((option) => (
-            <li key={option.id} className="flex items-center justify-between gap-3">
-              <span className="text-bone/85">
-                {option.name} · <span className="text-mute">{option.etaLabel}</span>
-              </span>
-              <span className="font-semibold whitespace-nowrap">
-                {option.price === 0 ? "Gratis" : formatCLP(option.price)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <table className="mt-3 w-full text-xs">
+          <tbody className="divide-y divide-ink-line">
+            {options.map((option) => (
+              <tr key={option.id}>
+                <td className="py-2 pr-3">
+                  <span className="text-bone/85">{option.name}</span>
+                  <span className="block text-mute">{option.etaLabel}</span>
+                </td>
+                <td className="tnum py-2 text-right font-semibold whitespace-nowrap">
+                  {option.price === 0 ? "Gratis" : formatCLP(option.price)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

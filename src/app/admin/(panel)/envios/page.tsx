@@ -17,7 +17,7 @@ function RegionPicker({ selected }: { selected: string[] }) {
               name="regionCodes"
               value={region.code}
               defaultChecked={selected.includes(region.code)}
-              className="h-3.5 w-3.5 accent-[#d7b56d]"
+              className="h-3.5 w-3.5 "
             />
             {region.shortName}
           </label>
@@ -150,7 +150,7 @@ function RateForm({
             type="checkbox"
             name="isPickup"
             defaultChecked={rate?.isPickup ?? false}
-            className="h-4 w-4 accent-[#d7b56d]"
+            className="h-4 w-4 "
           />
           Retiro en tienda (sin dirección)
         </label>
@@ -159,11 +159,11 @@ function RateForm({
             type="checkbox"
             name="active"
             defaultChecked={rate?.active ?? true}
-            className="h-4 w-4 accent-[#d7b56d]"
+            className="h-4 w-4 "
           />
           Activa
         </label>
-        <button className="rounded-full bg-bone px-5 py-2 text-xs font-bold text-ink">
+        <button className="btn btn-primary btn-sm">
           {rate ? "Guardar tarifa" : "Agregar tarifa"}
         </button>
       </div>
@@ -189,7 +189,7 @@ export default async function AdminShippingPage() {
       </p>
 
       {uncovered.length > 0 && (
-        <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-200">
+        <p className="mt-4 rounded-xs border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-200">
           Sin cobertura: {uncovered.map((r) => r.shortName).join(", ")}. Los clientes de esas
           regiones no podrán completar la compra.
         </p>
@@ -197,7 +197,7 @@ export default async function AdminShippingPage() {
 
       <div className="mt-8 space-y-6">
         {zones.map((zone) => (
-          <section key={zone.id} className="card-surface p-5">
+          <section key={zone.id} className="panel p-5">
             <form action={saveZone} className="space-y-4">
               <input type="hidden" name="id" value={zone.id} />
               <div className="grid gap-4 sm:grid-cols-[1.2fr_1.6fr_auto]">
@@ -228,11 +228,11 @@ export default async function AdminShippingPage() {
                     type="checkbox"
                     name="active"
                     defaultChecked={zone.active}
-                    className="h-4 w-4 accent-[#d7b56d]"
+                    className="h-4 w-4 "
                   />
                   Zona activa
                 </label>
-                <button className="rounded-full border border-ink-line px-5 py-2 text-xs font-semibold hover:border-bone">
+                <button className="btn btn-outline btn-sm">
                   Guardar zona
                 </button>
               </div>
@@ -245,7 +245,7 @@ export default async function AdminShippingPage() {
 
               <div className="mt-4 space-y-6">
                 {zone.rates.map((rate) => (
-                  <div key={rate.id} className="rounded-xl border border-ink-line p-4">
+                  <div key={rate.id} className="rounded-xs border border-ink-line p-4">
                     <div className="mb-3 flex items-center justify-between gap-3 text-xs">
                       <span className="font-semibold">
                         {rate.name} · {rate.price === 0 ? "Gratis" : formatCLP(rate.price)}
@@ -260,7 +260,7 @@ export default async function AdminShippingPage() {
                   </div>
                 ))}
 
-                <div className="rounded-xl border border-dashed border-ink-line p-4">
+                <div className="rounded-xs border border-dashed border-ink-line p-4">
                   <p className="mb-3 text-xs font-semibold text-mute">Nueva tarifa</p>
                   <RateForm zoneId={zone.id} />
                 </div>
@@ -277,7 +277,7 @@ export default async function AdminShippingPage() {
         ))}
       </div>
 
-      <section className="card-surface mt-8 p-5">
+      <section className="panel mt-8 p-5">
         <h2 className="text-sm font-bold">Nueva zona</h2>
         <form action={saveZone} className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-[1.2fr_1.6fr_auto]">
@@ -308,11 +308,11 @@ export default async function AdminShippingPage() {
                 type="checkbox"
                 name="active"
                 defaultChecked
-                className="h-4 w-4 accent-[#d7b56d]"
+                className="h-4 w-4 "
               />
               Zona activa
             </label>
-            <button className="rounded-full bg-bone px-6 py-2.5 text-sm font-bold text-ink">
+            <button className="btn btn-primary btn-sm">
               Crear zona
             </button>
           </div>

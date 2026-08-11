@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCart, type CartItem } from "@/components/cart-context";
+import { MinusIcon, PlusIcon } from "@/components/icons";
 
 export function AddToCart({ item }: { item: Omit<CartItem, "quantity"> }) {
   const { add } = useCart();
@@ -10,29 +11,29 @@ export function AddToCart({ item }: { item: Omit<CartItem, "quantity"> }) {
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
-      <div className="flex items-center justify-between rounded-full border border-ink-line px-2 sm:w-36">
+      <div className="flex items-center justify-between border border-ink-line sm:w-32">
         <button
-          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-          className="px-3 py-3 text-mute hover:text-bone"
+          onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+          className="link-quiet px-3 py-3.5"
           aria-label="Disminuir cantidad"
         >
-          −
+          <MinusIcon size={16} />
         </button>
-        <span className="text-sm font-semibold">{quantity}</span>
+        <span className="tnum text-sm font-semibold">{quantity}</span>
         <button
-          onClick={() => setQuantity((q) => Math.min(item.maxStock, q + 1))}
+          onClick={() => setQuantity((value) => Math.min(item.maxStock, value + 1))}
           disabled={quantity >= item.maxStock}
-          className="px-3 py-3 text-mute hover:text-bone disabled:opacity-30"
+          className="link-quiet px-3 py-3.5 disabled:opacity-30"
           aria-label="Aumentar cantidad"
         >
-          +
+          <PlusIcon size={16} />
         </button>
       </div>
 
       <button
         disabled={soldOut}
         onClick={() => add(item, quantity)}
-        className="flex-1 rounded-full bg-bone py-3.5 text-sm font-bold text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+        className="btn btn-primary flex-1"
       >
         {soldOut ? "Producto agotado" : "Agregar al carrito"}
       </button>
