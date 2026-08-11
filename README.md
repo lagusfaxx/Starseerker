@@ -786,7 +786,7 @@ En **Ajustes → Tienda**: el nombre (que se agrega a todos los titulos), la
 Incluye la base de datos en el mismo despliegue.
 
 1. **Nuevo recurso** → *Docker Compose* → conecta este repositorio.
-2. Coolify detecta `docker-compose.yml`.
+2. Coolify detecta `docker-compose.yaml`.
 3. En **Environment Variables** pega el contenido de `.env.example` con tus
    valores reales. Como minimo:
 

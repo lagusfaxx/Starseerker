@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-starseeker}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-starseeker}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -36,8 +36,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-starseeker}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-starseeker}?schema=public
-      APP_URL: ${APP_URL:?define APP_URL con tu dominio publico https}
-      SESSION_SECRET: ${SESSION_SECRET:?define SESSION_SECRET}
+      APP_URL: ${APP_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
       NODE_ENV: production
       PORT: 3000
 
@@ -53,6 +53,13 @@ services:
       BLUEX_PRODUCT_FAMILY: ${BLUEX_PRODUCT_FAMILY:-PAQU}
       BLUEX_BASE_URL: ${BLUEX_BASE_URL:-https://apigw.bluex.cl}
 
+      # Sin RESEND_API_KEY y EMAIL_FROM la tienda funciona, pero no manda
+      # ningun correo: ni comprobantes de compra ni codigos de verificacion.
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_REPLY_TO: ${EMAIL_REPLY_TO}
+      CRON_SECRET: ${CRON_SECRET}
+
       STORE_NAME: ${STORE_NAME:-STARSEEKER Chile}
       STORE_EMAIL: ${STORE_EMAIL:-hola@starseerker.cl}
       FREE_SHIPPING_THRESHOLD: ${FREE_SHIPPING_THRESHOLD:-60000}
@@ -64,6 +71,7 @@ services:
       ADMIN_NAME: ${ADMIN_NAME:-Administrador}
       # El seed no crea productos; en true agrega el catalogo oficial como borrador.
       SEED_CATALOG: ${SEED_CATALOG:-false}
+      SKIP_SEED: ${SKIP_SEED:-false}
     # Se usa `expose` y no `ports`: el proxy de Coolify enruta por dominio
     # dentro de su red, sin ocupar el puerto 3000 del servidor. Asi puedes
     # tener varias aplicaciones en la misma maquina sin que choquen.
