@@ -163,6 +163,8 @@ export function ImageGalleryField({
   const [urls, setUrlsState] = useState<string[]>(defaultValue);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Direccion escrita a mano, todavia sin agregar a la lista.
+  const [pending, setPending] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // El aviso al padre se hace fuera del actualizador de estado: React puede
@@ -201,6 +203,28 @@ export function ImageGalleryField({
     if (added.length) setUrls((current) => [...current, ...added]);
     setUploading(false);
     if (inputRef.current) inputRef.current.value = '';
+  }
+
+  /**
+   * Agrega una foto por su direccion, sin subir el archivo.
+   *
+   * Sirve cuando las fotos ya viven en otro sitio —el catalogo del fabricante,
+   * otro servidor de la empresa— y no tiene sentido duplicarlas aqui. El campo
+   * de una sola imagen ya lo permitia; la galeria de producto era la unica que
+   * obligaba a subir.
+   */
+  function addUrl() {
+    const url = pending.trim();
+    if (!url) return;
+
+    if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) {
+      setMessage('La direccion tiene que empezar por http://, https:// o /.');
+      return;
+    }
+
+    setMessage(null);
+    setPending('');
+    setUrls((current) => [...current, url]);
   }
 
   function move(index: number, delta: number) {
@@ -265,14 +289,34 @@ export function ImageGalleryField({
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        className="btn-ghost btn-sm mt-3"
-      >
-        {uploading ? 'Subiendo...' : addLabel}
-      </button>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="btn-ghost btn-sm"
+        >
+          {uploading ? 'Subiendo...' : addLabel}
+        </button>
+
+        <input
+          value={pending}
+          onChange={(event) => setPending(event.target.value)}
+          onKeyDown={(event) => {
+            // Enter dentro de un formulario lo enviaria entero, y aqui solo se
+            // esta agregando una foto a la lista.
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              addUrl();
+            }
+          }}
+          placeholder="o pega la URL de una foto"
+          className="field w-64 py-2 text-xs"
+        />
+        <button type="button" onClick={addUrl} disabled={!pending.trim()} className="btn-ghost btn-sm">
+          Agregar
+        </button>
+      </div>
 
       <input
         ref={inputRef}

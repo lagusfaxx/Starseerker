@@ -2209,6 +2209,40 @@ async function testMarquee() {
   await guardar(original ? original.value : null);
 }
 
+async function testBannerTone() {
+  console.log('\nColor del texto segun el fondo del banner');
+  const { backgroundTone, bannerTextClasses } = await import('../src/lib/banner-style');
+
+  check('el negro pide texto claro', backgroundTone('#000000') === 'dark');
+  check('el blanco pide texto oscuro', backgroundTone('#FFFFFF') === 'light');
+  check('un gris oscuro pide texto claro', backgroundTone('#262629') === 'dark');
+  check('un gris muy claro pide texto oscuro', backgroundTone('#F4F4F4') === 'light');
+  check('entiende el formato corto', backgroundTone('#fff') === 'light');
+
+  // Los degradados de la lista del panel: se promedia lo que aparezca.
+  check(
+    'el degradado negro pide texto claro',
+    backgroundTone('linear-gradient(120deg, #000000 0%, #141416 60%, #262629 100%)') === 'dark',
+  );
+  check(
+    'el degradado claro pide texto oscuro',
+    backgroundTone('linear-gradient(120deg, #8F8F96 0%, #C9C9CC 55%, #F4F4F4 100%)') === 'light',
+  );
+
+  // Ante la duda, texto claro: es el que ademas lleva velo cuando hay foto.
+  check('sin fondo declarado deja el texto claro', backgroundTone(null) === 'dark');
+  check('un fondo sin colores legibles deja el texto claro', backgroundTone('var(--algo)') === 'dark');
+
+  // Con una foto a sangre detras manda la foto, no el color de respaldo.
+  const sobreFoto = bannerTextClasses('#FFFFFF', true);
+  check('sobre una foto el texto sigue claro', sobreFoto.title === 'text-ink');
+  check('y su boton sigue siendo el claro', sobreFoto.cta === 'btn-primary');
+
+  const sobreBlanco = bannerTextClasses('#FFFFFF', false);
+  check('sobre blanco el titular va en negro', sobreBlanco.title === 'text-black');
+  check('y el boton se invierte', sobreBlanco.cta === 'btn-invert');
+}
+
 async function main() {
   console.log('Ejecutando pruebas de la tienda STARSEEKER...');
 
@@ -2236,6 +2270,7 @@ async function main() {
   await testVideoCodecs();
   await testVideoEmbeds();
   await testMarquee();
+  await testBannerTone();
 
   console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
   await prisma.$disconnect();

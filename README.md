@@ -167,6 +167,7 @@ En numeros, con una foto real de la tienda:
 | **Colecciones** | Imagen de la categoria, la que sale en la cuadricula de la portada |
 | **Productos** | Galeria completa: varias fotos, reordenables, la primera es la principal |
 | **Productos → Contenido bajo la ficha** | Fotos de uso, logo del relato, cartel del video y fotografias de los bloques |
+| **Productos** | Las fotos tambien se pueden agregar pegando su direccion, sin subir el archivo |
 | **Banners** | Video de fondo de la diapositiva (.mp4 o .webm) |
 | **Productos → Contenido bajo la ficha** | Video del bloque de video (.mp4 o .webm) |
 
@@ -185,8 +186,11 @@ relacionados.
 | **Video** | Video a lo ancho que se reproduce solo, en silencio, en bucle y sin controles. Admite YouTube, Vimeo o un archivo `.mp4` / `.webm` |
 | **Imagen y texto** | Fotografia a un costado y el texto al otro. Por defecto el lado se alterna en cada bloque |
 
-Cada bloque elige su fondo (oscuro, blanco o arena) y puede llevar un boton con
-su destino. Un bloque que queda sin contenido no se guarda, para que la pagina
+Cada bloque elige su fondo —negro, blanco o gris— y puede llevar un boton con
+su destino. El blanco es blanco de verdad: el texto pasa a negro y el boton se
+invierte, que es la forma de meter aire claro en una tienda oscura. Lo mismo
+vale para los banners de portada, que tienen un fondo "Blanco" y ajustan solos
+el color del texto. Un bloque que queda sin contenido no se guarda, para que la pagina
 nunca dibuje una franja en blanco.
 
 Los bloques con imagen eligen tambien su tamano — *pequena*, *mediana* o

@@ -85,15 +85,80 @@ export const OVERLAY_CLASS: Record<HeroOverlay, string> = {
 };
 
 /**
- * Peso de la bajada del banner.
+ * Decide si sobre un fondo hay que escribir en claro o en oscuro.
  *
- * Sobre una foto con mucho detalle la bajada gris clara se pierde, asi que el
- * propietario puede pedirla en negrita: ahi va tambien en blanco puro, porque
- * la transparencia es la mitad del problema de legibilidad. El titular no
- * cambia, siempre lleva el mismo peso.
+ * Los fondos de banner se guardan como CSS, asi que pueden ser un color, un
+ * degradado de la lista o cualquier cosa que el propietario pegue. En vez de
+ * llevar una tabla de cuales son claros se miran los colores que aparecen en
+ * el texto y se calcula su luminosidad media: asi un fondo nuevo funciona sin
+ * tocar nada.
+ *
+ * Antes el texto era blanco pase lo que pase, asi que elegir un fondo claro
+ * dejaba el titular ilegible y en la practica no se podia usar. Es lo que hacia
+ * falta para poder tener franjas blancas en la portada.
  */
-export function subtitleWeightClass(bold: boolean): string {
-  return bold ? 'font-semibold text-white' : 'text-white/80';
+export function backgroundTone(css: string | null | undefined): 'light' | 'dark' {
+  const colores = leerColores(css ?? '');
+  if (colores.length === 0) return 'dark';
+
+  const media = colores.reduce((suma, valor) => suma + valor, 0) / colores.length;
+  // El umbral esta alto a proposito: ante un fondo intermedio conviene el texto
+  // claro, que es el que ademas lleva velo cuando hay foto detras.
+  return media > 0.62 ? 'light' : 'dark';
+}
+
+/** Luminosidad de cada color hexadecimal que aparezca en el CSS, de 0 a 1. */
+function leerColores(css: string): number[] {
+  const hallazgos = css.match(/#[0-9a-f]{3,8}\b/gi) ?? [];
+
+  return hallazgos.flatMap((hex) => {
+    const limpio = hex.slice(1);
+    const completo =
+      limpio.length === 3
+        ? limpio
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : limpio.slice(0, 6);
+    if (completo.length !== 6) return [];
+
+    const r = parseInt(completo.slice(0, 2), 16) / 255;
+    const g = parseInt(completo.slice(2, 4), 16) / 255;
+    const b = parseInt(completo.slice(4, 6), 16) / 255;
+    if ([r, g, b].some(Number.isNaN)) return [];
+
+    // Luminosidad percibida: el ojo ve el verde mucho mas claro que el azul.
+    return [0.2126 * r + 0.7152 * g + 0.0722 * b];
+  });
+}
+
+/**
+ * Colores del texto de un banner segun su fondo.
+ *
+ * `sobreFoto` es distinto de un fondo claro: cuando hay una fotografia o un
+ * video detras, encima va un velo oscuro y el texto se queda en blanco aunque
+ * el color de respaldo sea claro, porque lo que se ve es la foto.
+ */
+export function bannerTextClasses(background: string | null | undefined, sobreFoto: boolean) {
+  const tono = sobreFoto ? 'dark' : backgroundTone(background);
+
+  return tono === 'light'
+    ? {
+        eyebrow: 'text-black/60',
+        title: 'text-black',
+        subtitle: 'text-black/70',
+        subtitleBold: 'font-semibold text-black',
+        cta: 'btn-invert',
+        arrows: 'text-black/60 hover:text-black',
+      }
+    : {
+        eyebrow: 'text-brand',
+        title: 'text-ink',
+        subtitle: 'text-white/80',
+        subtitleBold: 'font-semibold text-white',
+        cta: 'btn-primary',
+        arrows: 'text-white/80 hover:text-brand',
+      };
 }
 
 /**

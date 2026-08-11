@@ -16,7 +16,7 @@ import {
   toImageMode,
   toOverlay,
   toPlacement,
-  subtitleWeightClass,
+  bannerTextClasses,
 } from '@/lib/banner-style';
 import { BannerVideo } from '@/components/banner-video';
 import { ImageField } from './image-field';
@@ -31,6 +31,7 @@ const BACKGROUNDS = [
   { label: 'Humo', value: 'linear-gradient(120deg, #17171A 0%, #2C2C31 55%, #45454B 100%)' },
   { label: 'Plata', value: 'linear-gradient(120deg, #2C2C31 0%, #4A4A51 55%, #6E6E76 100%)' },
   { label: 'Claro', value: 'linear-gradient(120deg, #8F8F96 0%, #C9C9CC 55%, #F4F4F4 100%)' },
+  { label: 'Blanco', value: '#FFFFFF' },
 ];
 
 export type BannerFormValues = {
@@ -65,6 +66,12 @@ export function BannerForm({ values }: { values: BannerFormValues }) {
   const [placement, setPlacement] = useState<BannerPlacement>(toPlacement(values.placement));
   const [video, setVideo] = useState(values.video);
   const previewVideo = toBannerVideo(video);
+  // La vista previa tiene que mostrar el mismo cambio de color que la portada:
+  // si no, elegir un fondo claro se ve bien aqui y mal en la tienda.
+  const tono = bannerTextClasses(
+    background,
+    !isSplitMode(imageMode) && Boolean(previewVideo || (image && imageMode === 'background')),
+  );
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
@@ -159,22 +166,24 @@ export function BannerForm({ values }: { values: BannerFormValues }) {
             }`}
           >
             {eyebrow ? (
-              <p className="font-display text-xs font-bold uppercase tracking-[0.28em] text-brand">
+              <p className={`font-display text-xs font-bold uppercase tracking-[0.28em] ${tono.eyebrow}`}>
                 {eyebrow}
               </p>
             ) : null}
             {title ? (
-              <p className="mt-2 font-display text-4xl font-bold uppercase leading-none tracking-tight text-ink">
+              <p
+                className={`mt-2 font-display text-4xl font-bold uppercase leading-none tracking-tight ${tono.title}`}
+              >
                 {title}
               </p>
             ) : null}
             {subtitle ? (
-              <p className={`mt-3 text-sm ${subtitleWeightClass(subtitleBold)}`}>{subtitle}</p>
+              <p className={`mt-3 text-sm ${subtitleBold ? tono.subtitleBold : tono.subtitle}`}>
+                {subtitle}
+              </p>
             ) : null}
             {ctaLabel ? (
-              <span className="mt-5 inline-block bg-brand px-6 py-3 font-display text-xs font-bold uppercase tracking-widest text-black">
-                {ctaLabel}
-              </span>
+              <span className={`mt-5 inline-block ${tono.cta} px-6 py-3 text-xs`}>{ctaLabel}</span>
             ) : null}
           </div>
           {image && imageMode === 'side' ? (

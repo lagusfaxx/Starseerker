@@ -8,7 +8,7 @@ import {
   type HeroOverlay,
   isSplitMode,
   OVERLAY_CLASS,
-  subtitleWeightClass,
+  bannerTextClasses,
 } from '@/lib/banner-style';
 import { BannerVideo } from './banner-video';
 import { ArrowLeftIcon, ArrowRightIcon } from './icons';
@@ -58,6 +58,12 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
   if (slides.length === 0) return null;
   const slide = slides[index]!;
   const mode: HeroImageMode = slide.imageMode ?? 'background';
+
+  // En los modos partidos el texto se apoya en el color de fondo, asi que ahi
+  // manda el tono elegido. Con la foto a sangre detras lo que se ve es la foto
+  // con su velo, y el texto va claro pase lo que pase.
+  const cubierto = !isSplitMode(mode) && Boolean(slide.video || slide.image);
+  const tono = bannerTextClasses(slide.gradient, cubierto);
 
   return (
     <section
@@ -145,7 +151,9 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
                 : ''
             }`}
           >
-            <p className="font-display text-xs font-bold uppercase tracking-[0.28em] text-brand sm:text-sm">
+            <p
+              className={`font-display text-xs font-bold uppercase tracking-[0.28em] sm:text-sm ${tono.eyebrow}`}
+            >
               {slide.eyebrow}
             </p>
             {/*
@@ -154,21 +162,23 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
               para describir la tienda. El h1 es el texto de mas abajo, que si
               es siempre el mismo y dice quien es la tienda y que vende.
             */}
-            <h2 className="mt-3 font-display text-4xl font-bold uppercase leading-[0.92] tracking-tight text-ink sm:mt-4 sm:text-6xl lg:text-8xl">
-              {slide.highlight ? <span className="block text-brand">{slide.highlight}</span> : null}
+            <h2
+              className={`mt-3 font-display text-4xl font-bold uppercase leading-[0.92] tracking-tight sm:mt-4 sm:text-6xl lg:text-8xl ${tono.title}`}
+            >
+              {slide.highlight ? <span className="block">{slide.highlight}</span> : null}
               {slide.title ? <span className="block">{slide.title}</span> : null}
             </h2>
             {slide.subtitle ? (
               <p
-                className={`mt-4 max-w-md text-sm sm:mt-6 sm:text-base ${subtitleWeightClass(
-                  slide.subtitleBold ?? false,
-                )}`}
+                className={`mt-4 max-w-md text-sm sm:mt-6 sm:text-base ${
+                  slide.subtitleBold ? tono.subtitleBold : tono.subtitle
+                }`}
               >
                 {slide.subtitle}
               </p>
             ) : null}
             {slide.ctaLabel ? (
-              <Link href={slide.ctaHref} className="btn-primary mt-7 sm:mt-9">
+              <Link href={slide.ctaHref} className={`${tono.cta} mt-7 sm:mt-9`}>
                 {slide.ctaLabel}
               </Link>
             ) : null}
@@ -180,7 +190,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
             <button
               type="button"
               onClick={() => goTo(index - 1)}
-              className="text-white/80 transition-colors hover:text-brand"
+              className={`transition-colors ${tono.arrows}`}
               aria-label="Anterior"
             >
               <ArrowLeftIcon className="h-6 w-6" />
@@ -188,12 +198,12 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
             <button
               type="button"
               onClick={() => goTo(index + 1)}
-              className="text-white/80 transition-colors hover:text-brand"
+              className={`transition-colors ${tono.arrows}`}
               aria-label="Siguiente"
             >
               <ArrowRightIcon className="h-6 w-6" />
             </button>
-            <span className="font-display text-sm tabular-nums text-white/80">
+            <span className={`font-display text-sm tabular-nums ${tono.subtitle}`}>
               {index + 1}/{slides.length}
             </span>
           </div>

@@ -40,28 +40,54 @@ export function ProductBlocks({ blocks }: { blocks: ProductBlockData[] }) {
  */
 const THEME: Record<
   ProductBlockTheme,
-  { section: string; divider: string; title: string; body: string; eyebrow: string }
+  {
+    section: string;
+    divider: string;
+    title: string;
+    body: string;
+    eyebrow: string;
+    /** Boton del bloque: sobre blanco tiene que ser negro, y al reves. */
+    cta: string;
+    /** Fondo del hueco de cada foto en la franja de galeria. */
+    frame: string;
+  }
 > = {
   dark: {
-    section: 'bg-sand text-ink',
-    divider: 'border-white/15',
-    title: 'text-ink',
-    body: 'text-ink-soft',
-    eyebrow: 'text-ink-muted',
-  },
-  light: {
     section: 'bg-black text-ink',
     divider: 'border-sand-dark',
     title: 'text-ink',
     body: 'text-ink-soft',
     eyebrow: 'text-ink-muted',
+    cta: 'btn-primary',
+    frame: 'bg-sand',
+  },
+  /*
+   * Blanco de verdad, con el texto en negro.
+   *
+   * Antes las tres opciones daban un fondo oscuro y elegir "fondo blanco" no
+   * cambiaba nada: al invertir la paleta se cambiaron los colores pero no lo
+   * que significaban, y `bg-black` quedo puesto donde antes habia blanco. Aqui
+   * no se usan los nombres de la paleta a proposito: `ink` y `sand` son claros
+   * u oscuros segun el tema de la tienda, y esta franja tiene que ser blanca
+   * pase lo que pase, que es justo para lo que sirve.
+   */
+  light: {
+    section: 'bg-white text-black',
+    divider: 'border-black/10',
+    title: 'text-black',
+    body: 'text-black/70',
+    eyebrow: 'text-black/50',
+    cta: 'btn-invert',
+    frame: 'bg-black/5',
   },
   sand: {
-    section: 'bg-sand text-ink',
-    divider: 'border-sand-dark',
+    section: 'bg-sand-dark text-ink',
+    divider: 'border-white/10',
     title: 'text-ink',
     body: 'text-ink-soft',
     eyebrow: 'text-ink-muted',
+    cta: 'btn-primary',
+    frame: 'bg-sand',
   },
 };
 
@@ -90,9 +116,9 @@ function ProductBlockSection({ block, index }: { block: ProductBlockData; index:
           {block.images.map((url, imageIndex) => (
             <li
               key={`${url}-${imageIndex}`}
-              className={`shrink-0 snap-start bg-sand sm:w-auto sm:min-w-0 sm:flex-1 sm:basis-0 ${
-                BLOCK_GALLERY_ITEM_CLASS[block.imageSize]
-              }`}
+              className={`shrink-0 snap-start sm:w-auto sm:min-w-0 sm:flex-1 sm:basis-0 ${
+                theme.frame
+              } ${BLOCK_GALLERY_ITEM_CLASS[block.imageSize]}`}
             >
               <MediaImage
                 src={url}
@@ -233,7 +259,7 @@ function BlockCta({ block, className = '' }: { block: ProductBlockData; classNam
 
   return (
     <div className={className}>
-      <Link href={href} className={block.theme === 'dark' ? 'btn-primary' : 'btn-dark'}>
+      <Link href={href} className={THEME[block.theme].cta}>
         {block.ctaLabel}
       </Link>
     </div>

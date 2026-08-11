@@ -146,9 +146,9 @@ export function blockUsesImageSize(kind: ProductBlockKind): boolean {
 }
 
 export const BLOCK_THEMES: { value: ProductBlockTheme; label: string }[] = [
-  { value: 'dark', label: 'Fondo oscuro' },
+  { value: 'dark', label: 'Fondo negro' },
   { value: 'light', label: 'Fondo blanco' },
-  { value: 'sand', label: 'Fondo arena' },
+  { value: 'sand', label: 'Fondo gris' },
 ];
 
 /** Datos de un bloque tal como viajan entre el panel y el servidor. */

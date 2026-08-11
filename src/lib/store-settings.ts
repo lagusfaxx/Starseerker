@@ -79,7 +79,15 @@ export type StoreSettings = {
   seoHeading: string | null;
   /** Parrafo de la portada, el unico texto largo que Google encuentra ahi. */
   seoText: string | null;
+  /** Titulo de la tira de productos destacados de la portada. */
+  featuredTitle: string;
+  /** Titulo de la tira de colecciones de la portada. */
+  collectionsTitle: string;
 };
+
+/** Titulos de las dos tiras de la portada, si el propietario no pone otros. */
+export const DEFAULT_FEATURED_TITLE = 'Mas vendidos';
+export const DEFAULT_COLLECTIONS_TITLE = 'Colecciones';
 
 /** Mensajes por defecto de la cinta, editables desde el panel. */
 const DEFAULT_MARQUEE = [
@@ -107,6 +115,8 @@ export async function getStoreSettings(): Promise<StoreSettings> {
             'store.seoTitle',
             'store.seoHeading',
             'store.seoText',
+            'store.featuredTitle',
+            'store.collectionsTitle',
             LOGO_SETTING_KEY,
             SECONDARY_LOGO_SETTING_KEY,
             SECONDARY_LOGO_ALT_SETTING_KEY,
@@ -137,6 +147,10 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     seoTitle: map.get('store.seoTitle') || null,
     seoHeading: map.get('store.seoHeading') || null,
     seoText: map.get('store.seoText') || null,
+    // Vacio vuelve al titulo de siempre: una tira de productos sin ningun
+    // encabezado se lee como una fila de tarjetas sueltas.
+    featuredTitle: map.get('store.featuredTitle') || DEFAULT_FEATURED_TITLE,
+    collectionsTitle: map.get('store.collectionsTitle') || DEFAULT_COLLECTIONS_TITLE,
     logoUrl: map.get(LOGO_SETTING_KEY) || null,
     secondaryLogoUrl: map.get(SECONDARY_LOGO_SETTING_KEY) || null,
     secondaryLogoAlt: map.get(SECONDARY_LOGO_ALT_SETTING_KEY) || '',

@@ -5,7 +5,7 @@ import {
   type HeroOverlay,
   isSplitMode,
   OVERLAY_CLASS,
-  subtitleWeightClass,
+  bannerTextClasses,
 } from '@/lib/banner-style';
 import { BannerVideo } from './banner-video';
 import { MediaImage } from './media-image';
@@ -132,16 +132,24 @@ function BannerText({
   content: FeatureBannerContent;
   splitLayout?: boolean;
 }) {
+  // En una franja partida el texto se apoya en el color de fondo; con la foto
+  // a sangre detras se ve la foto con su velo y el texto va claro siempre.
+  const cubierto =
+    !splitLayout && Boolean(content.video || (content.image && content.imageMode === 'background'));
+  const tono = bannerTextClasses(content.background, cubierto);
+
   return (
     <>
       {content.eyebrow ? (
-        <p className="font-display text-xs font-bold uppercase tracking-[0.28em] text-brand sm:text-sm">
+        <p
+          className={`font-display text-xs font-bold uppercase tracking-[0.28em] sm:text-sm ${tono.eyebrow}`}
+        >
           {content.eyebrow}
         </p>
       ) : null}
       {content.title ? (
         <h2
-          className={`mt-3 font-display font-bold uppercase leading-none tracking-tight text-ink ${
+          className={`mt-3 font-display font-bold uppercase leading-none tracking-tight ${tono.title} ${
             splitLayout ? 'text-3xl sm:text-4xl lg:text-5xl' : 'text-4xl sm:text-6xl lg:text-8xl'
           }`}
         >
@@ -150,16 +158,16 @@ function BannerText({
       ) : null}
       {content.subtitle ? (
         <p
-          className={`mt-4 max-w-md text-base sm:text-lg ${subtitleWeightClass(
-            content.subtitleBold ?? false,
-          )}`}
+          className={`mt-4 max-w-md text-base sm:text-lg ${
+            content.subtitleBold ? tono.subtitleBold : tono.subtitle
+          }`}
         >
           {content.subtitle}
         </p>
       ) : null}
       {content.ctaLabel ? (
         <div className="mt-7 sm:mt-9">
-          <Link href={content.ctaHref} className="btn-primary">
+          <Link href={content.ctaHref} className={tono.cta}>
             {content.ctaLabel}
           </Link>
         </div>

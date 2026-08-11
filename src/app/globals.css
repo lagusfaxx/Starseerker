@@ -52,6 +52,15 @@
     @apply btn bg-ink px-8 py-4 text-black hover:bg-ink-soft;
   }
 
+  /*
+   * Boton para las franjas de fondo blanco. `btn-dark` no sirve ahi: en una
+   * tienda de fondo negro "oscuro" quiere decir casi blanco, asi que sobre
+   * blanco desaparece.
+   */
+  .btn-invert {
+    @apply btn bg-black px-8 py-4 text-ink hover:bg-sand-dark;
+  }
+
   .btn-outline {
     @apply btn border-2 border-ink bg-transparent px-8 py-[14px] text-ink hover:bg-ink hover:text-black;
   }

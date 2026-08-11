@@ -1626,6 +1626,9 @@ export async function saveSettings(_prev: AdminState, formData: FormData): Promi
     'store.seoTitle': String(formData.get('seoTitle') ?? '').trim().slice(0, 70),
     'store.seoHeading': String(formData.get('seoHeading') ?? '').trim().slice(0, 120),
     'store.seoText': String(formData.get('seoText') ?? '').trim().slice(0, 900),
+    // Encabezados de las dos tiras de la portada. Vacio deja el de siempre.
+    'store.featuredTitle': String(formData.get('featuredTitle') ?? '').trim().slice(0, 40),
+    'store.collectionsTitle': String(formData.get('collectionsTitle') ?? '').trim().slice(0, 40),
     // Una frase por linea; se muestran en la cinta desplazante de la portada.
     'store.marquee': String(formData.get('marquee') ?? '')
       .split('\n')

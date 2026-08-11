@@ -10,6 +10,8 @@ export function SettingsForm({
   storeName,
   storeEmail,
   announcement,
+  featuredTitle,
+  collectionsTitle,
   marquee,
   heroHeadline,
   metaDescription,
@@ -21,6 +23,8 @@ export function SettingsForm({
   storeName: string;
   storeEmail: string;
   announcement: string;
+  featuredTitle: string;
+  collectionsTitle: string;
   marquee: string;
   heroHeadline: string;
   metaDescription: string;
@@ -203,6 +207,43 @@ export function SettingsForm({
           Se muestra bajo el nombre del producto destacado, en grande. Dejalo vacio para mostrar
           solo el producto.
         </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="featuredTitle">
+            Titulo de la tira de productos
+          </label>
+          <input
+            id="featuredTitle"
+            name="featuredTitle"
+            defaultValue={featuredTitle}
+            maxLength={40}
+            className="field"
+            placeholder="Mas vendidos"
+          />
+          <p className="mt-1.5 text-xs text-ink-muted">
+            Encabeza los productos destacados de la portada. Por ejemplo &quot;Destacados&quot; o
+            &quot;Novedades&quot;.
+          </p>
+        </div>
+
+        <div>
+          <label className="label" htmlFor="collectionsTitle">
+            Titulo de la tira de categorias
+          </label>
+          <input
+            id="collectionsTitle"
+            name="collectionsTitle"
+            defaultValue={collectionsTitle}
+            maxLength={40}
+            className="field"
+            placeholder="Colecciones"
+          />
+          <p className="mt-1.5 text-xs text-ink-muted">
+            Encabeza la cuadricula de categorias, mas abajo en la portada.
+          </p>
+        </div>
       </div>
 
       <div>

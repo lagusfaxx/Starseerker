@@ -57,6 +57,8 @@ export default async function AdminSettingsPage() {
               storeName={store.name}
               storeEmail={store.email}
               announcement={store.announcement ?? ''}
+              featuredTitle={store.featuredTitle}
+              collectionsTitle={store.collectionsTitle}
               marquee={store.marquee.join('\n')}
               heroHeadline={store.heroHeadline ?? ''}
               metaDescription={store.metaDescription}

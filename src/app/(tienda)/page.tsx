@@ -312,7 +312,7 @@ export default async function HomePage() {
         <div className="bg-sand">
           <div className="container-site py-12">
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <h2 className="section-title">Mas vendidos</h2>
+              <h2 className="section-title">{settings.featuredTitle}</h2>
               <Link
                 href="/products"
                 className="font-display text-xs font-bold uppercase tracking-widest text-ink-soft underline-offset-4 hover:text-brand hover:underline"
@@ -351,7 +351,7 @@ export default async function HomePage() {
       <section className="border-t border-sand-dark">
         <div className="bg-sand">
           <div className="container-site py-12">
-            <h2 className="section-title">Colecciones</h2>
+            <h2 className="section-title">{settings.collectionsTitle}</h2>
           </div>
         </div>
         <div className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto border-t border-sand-dark sm:grid sm:grid-cols-2 sm:overflow-x-visible xl:grid-cols-4">
