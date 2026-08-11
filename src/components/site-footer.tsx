@@ -19,7 +19,6 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "Centro de ayuda", href: "/ayuda" },
       { label: "Despachos", href: "/ayuda/despachos" },
       { label: "Devoluciones", href: "/ayuda/devoluciones" },
-      { label: "Garantía", href: "/ayuda/garantia" },
       { label: "Seguir mi pedido", href: "/pedido" },
     ],
   },

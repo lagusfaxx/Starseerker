@@ -65,7 +65,7 @@ export function CartDrawer({ freeShippingThreshold }: { freeShippingThreshold: n
             </p>
             <div className="mt-2 h-px w-full bg-ink-line">
               <div
-                className="h-px bg-accent transition-all duration-500"
+                className="h-px bg-bone transition-all duration-500"
                 style={{ width: `${progress}%` }}
               />
             </div>

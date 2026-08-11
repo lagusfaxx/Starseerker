@@ -127,7 +127,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                   <span className="tnum text-sm text-mute line-through">
                     {formatCLP(product.compareAtPrice)}
                   </span>
-                  <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-white">
+                  <span className="rounded-full bg-bone px-2.5 py-1 text-[11px] font-semibold text-black">
                     -{off}%
                   </span>
                 </>
@@ -172,8 +172,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </div>
 
             <p className="mt-5 text-xs text-mute">
-              Garantía oficial de {product.warrantyMonths} meses en Chile · 10 días de retracto ·
-              Despacho a todo el país
+              Producto original · 10 días de retracto según la Ley del Consumidor · Despacho a
+              todo Chile
             </p>
 
             <div className="mt-7">

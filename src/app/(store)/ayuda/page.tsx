@@ -7,13 +7,13 @@ import { ChevronDownIcon } from "@/components/icons";
 export const metadata: Metadata = {
   title: "Centro de ayuda",
   description:
-    "Despachos, cambios, garantía y medios de pago de STARSEEKER Chile, el distribuidor oficial de la marca en el país.",
+    "Despachos, cambios, devoluciones y medios de pago de STARSEEKER Chile.",
 };
 
 const FAQ = [
   {
     q: "¿Son distribuidores oficiales?",
-    a: "Sí. Importamos directamente desde STARSEEKER y entregamos garantía respaldada en Chile, con repuestos y servicio técnico local.",
+    a: "Sí. Somos el distribuidor oficial de STARSEEKER en Chile e importamos directamente desde la marca.",
   },
   {
     q: "¿Cuánto demora mi pedido?",
@@ -26,6 +26,10 @@ const FAQ = [
   {
     q: "¿Emiten factura?",
     a: "Sí. Indica tu RUT al pagar y escríbenos con los datos de tu empresa el mismo día de la compra.",
+  },
+  {
+    q: "¿El producto es original?",
+    a: "Sí. Todo el stock entra al país por canales formales, con su documentación de importación al día.",
   },
   {
     q: "¿Puedo cambiar un producto si no me gustó?",
@@ -56,7 +60,7 @@ export default async function HelpPage() {
       <header className="mx-auto max-w-3xl text-center">
         <h1 className="display text-3xl sm:text-4xl">Centro de ayuda</h1>
         <p className="mt-3 text-sm text-mute">
-          Todo sobre despachos, pagos, garantía y devoluciones. ¿No encuentras lo que buscas?
+          Todo sobre despachos, pagos y devoluciones. ¿No encuentras lo que buscas?
           Escríbenos a{" "}
           <a href={`mailto:${settings.supportEmail}`} className="text-accent underline">
             {settings.supportEmail}

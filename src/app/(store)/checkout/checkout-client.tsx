@@ -326,7 +326,7 @@ export function CheckoutClient({
                       className="object-contain p-1"
                     />
                   )}
-                  <span className="absolute -top-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-accent text-[10px] font-bold text-ink">
+                  <span className="absolute -top-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-bone text-[10px] font-bold text-black">
                     {item.quantity}
                   </span>
                 </div>

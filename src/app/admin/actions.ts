@@ -99,7 +99,6 @@ export async function saveProduct(formData: FormData) {
     featured: bool(formData, "featured"),
     isNew: bool(formData, "isNew"),
     bestSeller: bool(formData, "bestSeller"),
-    warrantyMonths: int(formData, "warrantyMonths", 12),
     specs: parsePairs(str(formData, "specs")),
     highlights: parseLines(str(formData, "highlights")),
     seoTitle: optionalStr(formData, "seoTitle"),

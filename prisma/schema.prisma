@@ -45,6 +45,7 @@ model Product {
   specs           Json           @default("[]")
   /// Bullets destacados en la página de producto.
   highlights      Json           @default("[]")
+  /// Sin uso: la tienda no publica plazos de garantía.
   warrantyMonths  Int            @default(12)
   seoTitle        String?
   seoDescription  String?

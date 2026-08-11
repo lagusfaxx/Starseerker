@@ -91,7 +91,7 @@ export async function CatalogView({
                 aria-current={number === page ? "page" : undefined}
                 className={`tnum grid h-9 w-9 place-items-center rounded-full text-xs transition ${
                   number === page
-                    ? "bg-accent font-semibold text-white"
+                    ? "bg-bone font-semibold text-black"
                     : "bg-ink-soft text-mute hover:text-bone"
                 }`}
               >

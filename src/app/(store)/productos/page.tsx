@@ -14,7 +14,7 @@ const TITLES: Record<string, { title: string; description: string }> = {
   },
   ofertas: {
     title: "Ofertas",
-    description: "Precios rebajados por tiempo limitado, con la misma garantía oficial.",
+    description: "Precios rebajados por tiempo limitado.",
   },
 };
 
@@ -29,7 +29,7 @@ export async function generateMetadata({
     title: preset?.title ?? "Todos los productos",
     description:
       preset?.description ??
-      "Molinos, máquinas de espresso y accesorios STARSEEKER con garantía oficial en Chile.",
+      "Molinos eléctricos, máquinas de espresso portátiles y accesorios STARSEEKER, con despacho a todo Chile.",
   };
 }
 
@@ -48,7 +48,7 @@ export default async function ProductosPage({
       title={preset?.title ?? "Todos los productos"}
       description={
         preset?.description ??
-        "Catálogo completo STARSEEKER Chile. Envíos a todo el país y garantía local."
+        "Catálogo completo STARSEEKER Chile, con despacho a todo el país."
       }
     />
   );

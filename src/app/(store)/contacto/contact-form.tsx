@@ -5,8 +5,8 @@ import { useState } from "react";
 const SUBJECTS = [
   "Consulta sobre un producto",
   "Estado de mi pedido",
-  "Garantía o servicio técnico",
   "Cambio o devolución",
+  "Problema con un producto",
   "Compra para empresa",
   "Otro",
 ];

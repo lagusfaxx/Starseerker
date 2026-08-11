@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   heroSubtitle: "Molinos eléctricos y máquinas de espresso portátiles",
   heroCtaLabel: "",
   heroCtaHref: "/productos",
-  announcement: "Despacho gratis sobre $150.000 · Garantía oficial en Chile",
+  announcement: "Despacho gratis sobre $150.000 · Distribuidor oficial en Chile",
   announcementActive: true,
   minOrderTotal: 1000,
 };

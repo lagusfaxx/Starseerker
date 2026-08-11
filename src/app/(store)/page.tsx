@@ -115,22 +115,46 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Garantía */}
+      {/* Cómo comprar */}
       <section className="border-t border-ink-line">
-        <div className="container-page py-16 text-center">
-          <p className="eyebrow">{settings.tagline}</p>
-          <h2 className="display mx-auto mt-4 max-w-2xl text-2xl text-balance sm:text-3xl">
-            Garantía oficial, servicio técnico y repuestos en Chile
-          </h2>
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute">
-            Importamos directo desde STARSEEKER. Despachamos a las 16 regiones y respondemos por
-            cada equipo sin trámites en el extranjero.
-          </p>
-          <Link href="/ayuda/garantia" className="btn btn-outline mt-8">
-            Conocer la garantía
-          </Link>
+        <div className="container-page py-16">
+          <SectionTitle title="Cómo comprar" />
+          <ol className="mx-auto grid max-w-4xl gap-10 sm:grid-cols-3">
+            {[
+              {
+                step: "01",
+                title: "Elige tu equipo",
+                text: "Precios en pesos con IVA incluido. Verás el stock disponible antes de agregarlo al carrito.",
+              },
+              {
+                step: "02",
+                title: "Calcula tu despacho",
+                text: "Eliges región y comuna y el costo aparece completo antes de pagar, sin cargos que aparezcan después.",
+              },
+              {
+                step: "03",
+                title: "Paga y sigue tu pedido",
+                text: "Pagas con Mercado Pago, en cuotas si quieres. Te llega el número de pedido y el seguimiento por correo.",
+              },
+            ].map((item) => (
+              <li key={item.step} className="text-center">
+                <p className="tnum text-2xl font-light text-mute">{item.step}</p>
+                <h3 className="mt-3 text-base font-semibold">{item.title}</h3>
+                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-mute">
+                  {item.text}
+                </p>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-12 text-center">
+            <Link href="/ayuda/despachos" className="btn btn-outline">
+              Ver costos y plazos de despacho
+            </Link>
+          </div>
         </div>
       </section>
+
     </>
   );
 }

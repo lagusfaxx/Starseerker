@@ -56,39 +56,13 @@ export const HELP_PAGES: ContentPage[] = [
         heading: "Producto con falla",
         body: [
           "Si el producto llega fallado o presenta un defecto de fabricación dentro de los primeros 6 meses, la Ley del Consumidor te permite elegir entre cambio, reparación o devolución del dinero.",
-          "Envíanos fotos o un video de la falla junto a tu número de pedido y activamos la garantía sin costo para ti.",
+          "Envíanos fotos o un video de la falla junto a tu número de pedido y lo gestionamos con la marca sin costo para ti.",
         ],
       },
       {
         heading: "Producto equivocado o dañado en el transporte",
         body: [
           "Revisa tu pedido al recibirlo. Si llegó dañado o no corresponde, avísanos dentro de las 48 horas siguientes a la entrega y nos hacemos cargo del retiro y del reemplazo.",
-        ],
-      },
-    ],
-  },
-  {
-    slug: "garantia",
-    title: "Garantía oficial en Chile",
-    summary: "Respaldo local, repuestos y servicio técnico sin enviar tu equipo al extranjero.",
-    sections: [
-      {
-        heading: "Qué cubre",
-        body: [
-          "Todos los equipos STARSEEKER comprados en starseerker.cl tienen garantía por defectos de fabricación. El plazo de cada producto se indica en su ficha (12 meses salvo que se señale otro).",
-          "La garantía cubre fallas de componentes, motor, electrónica y defectos de fábrica en condiciones normales de uso doméstico.",
-        ],
-      },
-      {
-        heading: "Qué no cubre",
-        body: [
-          "Daños por caídas, humedad, uso comercial intensivo no declarado, manipulación por terceros no autorizados, desgaste normal de piezas de consumo y uso de accesorios no originales.",
-        ],
-      },
-      {
-        heading: "Cómo activarla",
-        body: [
-          "Escríbenos con tu número de pedido y una descripción de la falla. Somos el distribuidor oficial, así que la gestión se resuelve en Chile: sin trámites de importación ni envíos al exterior.",
         ],
       },
     ],

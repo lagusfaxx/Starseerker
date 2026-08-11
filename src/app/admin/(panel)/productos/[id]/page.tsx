@@ -153,16 +153,6 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
                 className="field"
               />
             </div>
-            <div>
-              <label className="field-label">Garantía (meses)</label>
-              <input
-                name="warrantyMonths"
-                type="number"
-                min={0}
-                defaultValue={product?.warrantyMonths ?? 12}
-                className="field"
-              />
-            </div>
           </div>
 
           <div className="flex flex-wrap gap-5 pt-2">

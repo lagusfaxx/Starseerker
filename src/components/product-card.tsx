@@ -46,7 +46,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         )}
 
         {off !== null && (
-          <span className="absolute top-3 left-3 rounded-full bg-accent px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white">
+          <span className="absolute top-3 left-3 rounded-full bg-bone px-2.5 py-1 text-[10px] font-semibold tracking-wide text-black">
             -{off}%
           </span>
         )}

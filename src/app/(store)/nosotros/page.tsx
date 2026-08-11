@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/settings";
 export const metadata: Metadata = {
   title: "Quiénes somos",
   description:
-    "Distribuidor oficial en Chile de STARSEEKER: molinos eléctricos, máquinas de espresso portátiles y accesorios. Importación directa y garantía local.",
+    "Distribuidor oficial en Chile de STARSEEKER: molinos eléctricos, máquinas de espresso portátiles y accesorios, con importación directa.",
 };
 
 const PILLARS = [
@@ -14,8 +14,8 @@ const PILLARS = [
     text: "Trabajamos de la mano con la marca. Cada equipo que vendemos entra al país por canales formales, con documentación y respaldo.",
   },
   {
-    title: "Garantía que se resuelve acá",
-    text: "Nada de enviar tu equipo al extranjero. Tenemos repuestos y servicio técnico en Chile para resolver rápido.",
+    title: "Stock en Chile",
+    text: "Los equipos salen de nuestra bodega en Santiago, no de un envío internacional que demora semanas.",
   },
   {
     title: "Precios en pesos, sin sorpresas",
@@ -41,7 +41,7 @@ export default async function AboutPage() {
         </p>
         <p className="mt-4 text-base leading-relaxed text-bone/80">
           Somos el distribuidor oficial de la marca en Chile. Importamos directo, publicamos precios
-          en pesos con IVA incluido y respondemos por la garantía en el país.
+          en pesos con IVA incluido y despachamos a todo el país.
         </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-3">

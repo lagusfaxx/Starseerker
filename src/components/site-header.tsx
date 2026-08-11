@@ -95,7 +95,7 @@ export function SiteHeader({
           <button onClick={open} className="link-quiet relative" aria-label={`Carrito, ${count} productos`}>
             <BagIcon size={21} />
             {count > 0 && (
-              <span className="tnum absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
+              <span className="tnum absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-bone px-1 text-[10px] font-semibold text-black">
                 {count}
               </span>
             )}

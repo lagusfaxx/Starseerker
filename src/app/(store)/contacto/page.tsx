@@ -4,7 +4,7 @@ import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "Contacto",
-  description: "Escríbenos: soporte, garantía, cotizaciones y ventas corporativas en Chile.",
+  description: "Escríbenos: soporte, seguimiento de pedidos, cotizaciones y ventas para empresas.",
 };
 
 export default async function ContactPage() {
@@ -16,13 +16,13 @@ export default async function ContactPage() {
         <div>
           <h1 className="display text-3xl sm:text-4xl">Hablemos</h1>
           <p className="mt-3 text-sm leading-relaxed text-mute">
-            Respondemos de lunes a viernes, de 9:00 a 18:00 h. Para temas de garantía incluye tu
-            número de pedido.
+            Respondemos de lunes a viernes, de 9:00 a 18:00 h. Si escribes por una compra,
+            incluye tu número de pedido.
           </p>
 
           <dl className="mt-8 space-y-4 text-sm">
             <div>
-              <dt className="field-label">Soporte y garantía</dt>
+              <dt className="field-label">Soporte</dt>
               <dd>
                 <a href={`mailto:${settings.supportEmail}`} className="hover:text-accent">
                   {settings.supportEmail}
