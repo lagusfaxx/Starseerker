@@ -880,7 +880,7 @@ export async function saveBanner(_prev: AdminState, formData: FormData): Promise
       status: 'error',
       message: 'El enlace del video no es valido.',
       errors: {
-        video: 'Usa un archivo .mp4 o .webm, o un enlace de YouTube o Vimeo.',
+        video: 'Sube un archivo .mp4 o .webm, o pega un enlace de YouTube o Vimeo.',
       },
     };
   }

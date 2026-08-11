@@ -19,6 +19,7 @@ import {
   emptyProductBlock,
 } from '@/lib/product-blocks';
 import { ImageField, ImageGalleryField } from './image-field';
+import { VideoField } from './video-field';
 
 /**
  * Editor de los bloques que se muestran bajo la ficha del producto.
@@ -292,20 +293,12 @@ function BlockEditor({
       ) : null}
 
       {uses.video ? (
-        <label className="block">
-          <span className="label">Video</span>
-          <input
-            className="field"
-            value={row.video}
-            onChange={(event) => onChange({ video: event.target.value })}
-            placeholder="https://www.youtube.com/watch?v=... o /media/video.mp4"
-            maxLength={500}
-          />
-          <span className="mt-1 block text-xs text-ink-muted">
-            Admite un enlace de YouTube o Vimeo, o un archivo .mp4 o .webm. Se reproduce
-            solo, sin sonido y en bucle, asi que conviene uno corto y sin voz.
-          </span>
-        </label>
+        <VideoField
+          label="Video"
+          defaultValue={row.video}
+          onChange={(url) => onChange({ video: url })}
+          hint="Se reproduce solo, sin sonido y en bucle, asi que conviene uno corto y sin voz. Sube un .mp4 o .webm: un video propio no muestra ningun control."
+        />
       ) : null}
 
       {uses.image ? (

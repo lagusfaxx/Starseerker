@@ -20,6 +20,7 @@ import {
 } from '@/lib/banner-style';
 import { BannerVideo } from '@/components/banner-video';
 import { ImageField } from './image-field';
+import { VideoField } from './video-field';
 
 const initialState: AdminState = { status: 'idle', message: '', errors: {} };
 
@@ -263,23 +264,18 @@ export function BannerForm({ values }: { values: BannerFormValues }) {
               hint="Para fondo completo conviene una foto apaisada de al menos 1920x900."
             />
 
-            <Field
-              label="Video de fondo (URL)"
+            <VideoField
+              label="Video de fondo"
               name="video"
-              value={video}
-              onChange={(event) => setVideo(event.target.value)}
-              placeholder="https://tudominio.com/video.mp4"
+              defaultValue={values.video}
+              onChange={setVideo}
               error={state.errors.video}
-              hint={
-                video && !previewVideo
-                  ? undefined
-                  : 'Se reproduce solo, en bucle, sin sonido y sin controles. Admite un archivo .mp4 o .webm, o un enlace de YouTube o Vimeo. Si lo completas, tapa a la imagen, que queda como cartel mientras el video carga.'
-              }
+              hint="Se reproduce solo, en bucle y sin sonido. Si lo completas, tapa a la imagen, que queda como cartel mientras el video carga. Sube un .mp4 o .webm: un video propio no muestra ningun control. Con un enlace de YouTube o Vimeo hay que incrustar su reproductor, y ese decide por su cuenta cuando asomar su interfaz."
             />
             {video && !previewVideo ? (
               <span className="error-text -mt-3 block">
-                No se reconoce ese enlace. Usa un archivo .mp4 o .webm, o un enlace de YouTube
-                o Vimeo.
+                No se reconoce ese enlace. Sube un archivo .mp4 o .webm, o pega un enlace de
+                YouTube o Vimeo.
               </span>
             ) : null}
 

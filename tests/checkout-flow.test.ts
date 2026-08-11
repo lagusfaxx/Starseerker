@@ -1915,6 +1915,75 @@ async function testMediaCleanup() {
   });
 }
 
+async function testVideoUpload() {
+  console.log('\nVideos subidos desde el panel');
+  const { storeVideo, parseByteRange, isVideoType, MAX_VIDEO_BYTES } = await import(
+    '../src/lib/media'
+  );
+
+  // Solo los dos formatos que cualquier navegador reproduce sin convertir.
+  const jpg = new File([new Uint8Array(16)], 'foto.jpg', { type: 'image/jpeg' });
+  const rechazo = await storeVideo(jpg);
+  check('rechaza un formato que no es video', 'error' in rechazo);
+
+  const mov = new File([new Uint8Array(16)], 'clip.mov', { type: 'video/quicktime' });
+  check('rechaza un MOV, que habria que recodificar', 'error' in (await storeVideo(mov)));
+
+  const vacio = new File([], 'vacio.mp4', { type: 'video/mp4' });
+  check('rechaza un archivo vacio', 'error' in (await storeVideo(vacio)));
+
+  const mp4 = new File([new Uint8Array(1024)], 'fondo.mp4', { type: 'video/mp4' });
+  const guardado = await storeVideo(mp4);
+  check('guarda un MP4', !('error' in guardado));
+
+  if (!('error' in guardado)) {
+    check('lo sirve desde /api/media', guardado.url === `/api/media/${guardado.id}`);
+
+    const fila = await prisma.mediaAsset.findUnique({
+      where: { id: guardado.id },
+      select: { mimeType: true, size: true },
+    });
+    check('conserva el tipo del archivo', fila?.mimeType === 'video/mp4');
+    check('guarda el archivo entero', fila?.size === 1024);
+    check('lo reconoce como video', isVideoType(fila?.mimeType ?? ''));
+
+    // Un video no se reencodea: sharp no lo toca y no debe quedar ninguna
+    // version en cache, que es trabajo de servidor tirado.
+    const versiones = await prisma.mediaVariant.count({ where: { mediaId: guardado.id } });
+    check('no le prepara versiones optimizadas', versiones === 0);
+
+    await prisma.mediaAsset.delete({ where: { id: guardado.id } });
+  }
+
+  check('el tope es de 60 MB', MAX_VIDEO_BYTES === 60 * 1024 * 1024);
+
+  // Tramos: es lo que un `<video>` necesita para reproducir y rebobinar.
+  check('sin cabecera manda el archivo completo', parseByteRange(null, 2048) === null);
+  check(
+    'entiende un tramo desde el principio',
+    JSON.stringify(parseByteRange('bytes=0-99', 2048)) === JSON.stringify({ start: 0, end: 99 }),
+  );
+  check(
+    'un tramo abierto llega hasta el final',
+    JSON.stringify(parseByteRange('bytes=100-', 2048)) === JSON.stringify({ start: 100, end: 2047 }),
+  );
+  check(
+    'recorta un final que se pasa del tamano',
+    JSON.stringify(parseByteRange('bytes=0-99999', 2048)) === JSON.stringify({ start: 0, end: 2047 }),
+  );
+  check(
+    'los ultimos bytes se cuentan desde el final',
+    JSON.stringify(parseByteRange('bytes=-50', 2048)) === JSON.stringify({ start: 1998, end: 2047 }),
+  );
+  check(
+    'un tramo que empieza pasado el final es imposible',
+    parseByteRange('bytes=99999-', 2048) === 'imposible',
+  );
+  check('un tramo al reves es imposible', parseByteRange('bytes=500-100', 2048) === 'imposible');
+  check('lo que no se entiende se sirve entero', parseByteRange('bytes=abc', 2048) === null);
+  check('varios tramos a la vez se sirven enteros', parseByteRange('bytes=0-9,20-29', 2048) === null);
+}
+
 async function main() {
   console.log('Ejecutando pruebas de la tienda STARSEEKER...');
 
@@ -1938,6 +2007,7 @@ async function main() {
   await testTransactionalEmail();
   await testPublicOrigin();
   await testMediaCleanup();
+  await testVideoUpload();
 
   console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
   await prisma.$disconnect();

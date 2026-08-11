@@ -64,6 +64,25 @@ Formatos: JPG, PNG, WEBP, AVIF y SVG, hasta 10 MB por imagen. Los SVG con script
 rechazan. Al guardar, las imagenes que dejaron de usarse se borran solas
 (con una hora de gracia, por si quedaron en un formulario a medio llenar).
 
+**Videos.** Los banners de portada y el bloque de video de la ficha admiten
+tambien subir un archivo **.mp4 o .webm**, hasta 60 MB, por el mismo camino y
+con el mismo trato: se guardan en la base y se sirven desde `/api/media/<id>`.
+No se recodifican, asi que el archivo que subes es exactamente el que viaja al
+visitante; conviene recortarlo y comprimirlo antes.
+
+Subir el archivo es lo recomendable y no por comodidad. Un video propio se
+reproduce con la etiqueta `<video>` del navegador, que no dibuja ningun
+control. Un enlace de YouTube o Vimeo obliga a incrustar el reproductor de
+ellos, y ese decide por su cuenta cuando mostrar su interfaz encima —al
+pausarse, al reiniciar el bucle o al volver a la portada desde otra pagina— por
+mucho que se le pida lo contrario. Cuando hay un enlace incrustado, la tienda
+recorta los bordes del reproductor para que esa franja quede fuera de lo
+visible, pero con un archivo propio el problema no existe.
+
+El video se sirve por tramos (`Range`), que es lo que el navegador necesita
+para reproducirlo, saltar a un punto y reiniciar el bucle sin volver a
+descargarlo entero.
+
 **Optimizacion.** El archivo que subes se guarda tal cual y no se toca nunca.
 Lo que se optimiza es lo que viaja al navegador: la tienda pide cada foto en el
 ancho que de verdad ocupa en pantalla (`?w=320` … `?w=1920`) y, si el navegador
@@ -104,6 +123,8 @@ En numeros, con una foto real de la tienda:
 | **Colecciones** | Imagen de la categoria, la que sale en la cuadricula de la portada |
 | **Productos** | Galeria completa: varias fotos, reordenables, la primera es la principal |
 | **Productos → Contenido bajo la ficha** | Fotos de uso, logo del relato, cartel del video y fotografias de los bloques |
+| **Banners** | Video de fondo de la diapositiva (.mp4 o .webm) |
+| **Productos → Contenido bajo la ficha** | Video del bloque de video (.mp4 o .webm) |
 
 ### Contenido bajo la ficha del producto
 

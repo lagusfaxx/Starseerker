@@ -31,6 +31,27 @@ export const ALLOWED_IMAGE_TYPES = [
   'image/svg+xml',
 ];
 
+/**
+ * Peso maximo de un video subido desde el panel.
+ *
+ * Es bastante mas alto que el de una imagen porque un video de fondo de unos
+ * segundos en buena calidad no baja de varios megas, y bastante mas bajo que
+ * lo que aguantaria la base porque cada peticion lee la fila entera en
+ * memoria. Con 60 MB entra de sobra un fondo de 10 a 20 segundos en 1080p, que
+ * es para lo que sirve esto.
+ *
+ * No pasa por Server Actions —el panel lo sube por `/api/admin/media`, que no
+ * tiene el tope de 1 MB del transporte— asi que aqui no hay que tocar
+ * `next.config.ts`.
+ */
+export const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
+
+/**
+ * Solo MP4 y WEBM: son los dos que cualquier navegador reproduce sin plugins
+ * ni conversion. Un MOV o un AVI habria que recodificarlos en el servidor.
+ */
+export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
+
 export type MediaError = { error: string };
 export type MediaResult = { url: string; id: string };
 
@@ -85,11 +106,128 @@ export async function storeImage(file: File, alt = ''): Promise<MediaResult | Me
   return { id: asset.id, url: `/api/media/${asset.id}` };
 }
 
+/**
+ * Guarda un video subido desde el panel.
+ *
+ * Va aparte de `storeImage` y no es lo mismo con otra lista de formatos: un
+ * video no se reencodea (sharp no lo toca), no tiene versiones por ancho y
+ * pesa un orden de magnitud mas, asi que ni el limite ni el trabajo posterior
+ * se parecen.
+ */
+export async function storeVideo(file: File): Promise<MediaResult | MediaError> {
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: 'No se recibio ningun archivo.' };
+  }
+
+  if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+    return { error: 'Formato no admitido. Usa un archivo .mp4 o .webm.' };
+  }
+
+  if (file.size > MAX_VIDEO_BYTES) {
+    return {
+      error: `El video pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el maximo son ${
+        MAX_VIDEO_BYTES / 1024 / 1024
+      } MB. Recortalo o bajale la calidad.`,
+    };
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const asset = await prisma.mediaAsset.create({
+    data: {
+      filename: file.name.slice(0, 200) || 'video',
+      mimeType: file.type,
+      size: bytes.length,
+      bytes,
+      alt: '',
+    },
+    select: { id: true },
+  });
+
+  // A diferencia de una imagen no se prepara ninguna version: un video no se
+  // reencodea aqui.
+  return { id: asset.id, url: `/api/media/${asset.id}` };
+}
+
 export async function getImage(id: string) {
   return prisma.mediaAsset.findUnique({
     where: { id },
     select: { bytes: true, mimeType: true, size: true },
   });
+}
+
+/**
+ * Devuelve un archivo tal como se subio, sin pasar por la optimizacion.
+ *
+ * Lo usa el servido de video, que necesita los bytes crudos para poder cortar
+ * el trozo que pide el navegador.
+ */
+export async function getRawAsset(
+  id: string,
+): Promise<{ bytes: Buffer; mimeType: string; size: number } | null> {
+  const asset = await prisma.mediaAsset.findUnique({
+    where: { id },
+    select: { bytes: true, mimeType: true, size: true },
+  });
+  if (!asset) return null;
+  return { bytes: Buffer.from(asset.bytes), mimeType: asset.mimeType, size: asset.size };
+}
+
+/**
+ * Solo el tipo de un archivo subido.
+ *
+ * Sirve para decidir como responder sin arrastrar los bytes: es la misma
+ * consulta pero devolviendo una cadena corta en vez de varios megas.
+ */
+export async function getAssetType(id: string): Promise<string | null> {
+  const asset = await prisma.mediaAsset.findUnique({
+    where: { id },
+    select: { mimeType: true },
+  });
+  return asset?.mimeType ?? null;
+}
+
+/**
+ * Interpreta una cabecera `Range` de un solo tramo.
+ *
+ * Tres respuestas posibles:
+ *
+ * - `null`: no hay cabecera, pide varios tramos a la vez (que casi nadie usa y
+ *   complicaria la respuesta) o no se entiende. Mandar el archivo completo es
+ *   una respuesta valida para los tres casos.
+ * - `'imposible'`: se entiende pero no se puede cumplir, porque empieza mas
+ *   alla del final del archivo. Eso es un 416, no el archivo entero.
+ * - Un tramo: los limites, ya recortados al tamano real.
+ */
+export function parseByteRange(
+  header: string | null,
+  size: number,
+): { start: number; end: number } | 'imposible' | null {
+  if (!header) return null;
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match) return null;
+
+  const [, rawStart, rawEnd] = match;
+
+  // "bytes=-500" son los ultimos 500 bytes, no del 0 al 500.
+  if (!rawStart) {
+    const length = Number(rawEnd);
+    if (!Number.isFinite(length) || length <= 0) return null;
+    return { start: Math.max(0, size - length), end: size - 1 };
+  }
+
+  const start = Number(rawStart);
+  const end = rawEnd ? Number(rawEnd) : size - 1;
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (start >= size || start > end) return 'imposible';
+
+  return { start, end: Math.min(end, size - 1) };
+}
+
+/** Un video nunca pasa por sharp. */
+export function isVideoType(mimeType: string): boolean {
+  return mimeType.startsWith('video/');
 }
 
 // ---------------------------------------------------------------------------
@@ -100,8 +238,11 @@ export async function getImage(id: string) {
 const MODERN_FORMATS = ['avif', 'webp'] as const;
 export type MediaFormat = (typeof MODERN_FORMATS)[number];
 
-/** Un SVG ya es texto y escala solo; reencodearlo no aporta nada. */
-const NOT_OPTIMIZABLE = ['image/svg+xml'];
+/**
+ * Un SVG ya es texto y escala solo; reencodearlo no aporta nada. Un video
+ * directamente no es cosa de sharp: se sirve tal cual se subio.
+ */
+const NOT_OPTIMIZABLE = ['image/svg+xml', 'video/mp4', 'video/webm'];
 
 /**
  * La lista de anchos es cerrada a proposito: uno libre en la URL dejaria que
