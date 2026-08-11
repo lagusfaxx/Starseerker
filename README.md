@@ -22,7 +22,7 @@ y un panel de administración propio con **despachos configurables por región**
 - Seguimiento de pedido sin cuenta (número + correo, o enlace con token).
 - Centro de ayuda, despachos, devoluciones, garantía, medios de pago, contacto, nosotros,
   términos y privacidad — redactados para el mercado chileno (Ley 19.496, retracto de 10 días).
-- `sitemap.xml` y `robots.txt` generados desde la base de datos.
+- `sitemap.xml` y `robots.txt` generados en cada request desde la base de datos.
 
 **Panel de administración** (`/admin`)
 
@@ -57,7 +57,7 @@ npm run dev
 | Variable | Para qué sirve |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL (Neon, Supabase, RDS, etc.). |
-| `NEXT_PUBLIC_SITE_URL` | URL pública; se usa en correos, JSON-LD y retornos de Mercado Pago. |
+| `APP_URL` | URL pública; se usa en correos, sitemap y retornos de Mercado Pago. |
 | `AUTH_SECRET` | Firma la sesión del panel. `openssl rand -base64 48`. |
 | `MP_ACCESS_TOKEN` | Access token de producción de tu cuenta Mercado Pago Chile. |
 | `MP_WEBHOOK_SECRET` | Clave de firma del webhook (panel de MP → Notificaciones). |
@@ -119,6 +119,7 @@ El seed deja cinco zonas cubriendo las 16 regiones (RM, centro, norte, sur y zon
 | --- | --- |
 | `npm run dev` | Servidor de desarrollo. |
 | `npm run build` / `npm start` | Build y arranque en producción. |
+| `docker compose up --build` | Levanta app + PostgreSQL igual que en Coolify. |
 | `npm run db:deploy` | Aplica migraciones (producción). |
 | `npm run db:migrate` | Crea una migración nueva (desarrollo). |
 | `npm run db:seed` | Datos iniciales. |
@@ -127,12 +128,70 @@ El seed deja cinco zonas cubriendo las 16 regiones (RM, centro, norte, sur y zon
 
 ---
 
-## Despliegue
+## Despliegue en Coolify
 
-Pensado para Vercel + PostgreSQL administrado:
+La aplicación se empaqueta en una sola imagen (`Dockerfile`, salida `standalone` de
+Next) que al arrancar espera a PostgreSQL, **aplica las migraciones** y **siembra los
+datos iniciales solo la primera vez**. No hay pasos manuales de base de datos.
 
-1. Crea la base de datos y carga las variables de entorno del proyecto.
-2. `npm run db:deploy` (y `npm run db:seed` la primera vez).
-3. Apunta `starseerker.cl` al proyecto y define `NEXT_PUBLIC_SITE_URL=https://starseerker.cl`.
-4. Registra el webhook de Mercado Pago con el dominio definitivo.
-5. Verifica el dominio del remitente en Resend (SPF + DKIM) para que los correos no caigan en spam.
+### Opción recomendada: recurso "Docker Compose"
+
+1. En Coolify: **New Resource → Docker Compose**, conecta este repositorio y la rama.
+2. Coolify detecta `docker-compose.yaml`, que levanta dos servicios: `app` y `postgres`
+   (con volumen persistente `starseerker-postgres`).
+3. En **Environment Variables** del recurso define:
+
+   | Variable | Obligatoria | Notas |
+   | --- | --- | --- |
+   | `APP_URL` | sí | `https://starseerker.cl`. Se usa en runtime y como build arg. |
+   | `AUTH_SECRET` | sí | `openssl rand -base64 48`. |
+   | `ADMIN_PASSWORD` | sí | Clave del primer usuario del panel. |
+   | `ADMIN_EMAIL` | no | Por defecto `admin@starseerker.cl`. |
+   | `MP_ACCESS_TOKEN` | sí para cobrar | Access token de producción de Mercado Pago Chile. |
+   | `MP_WEBHOOK_SECRET` | recomendada | Firma del webhook; sin ella no se valida el origen. |
+   | `RESEND_API_KEY` | no | Sin ella los correos se omiten y quedan en el log. |
+   | `RESEND_FROM`, `ORDER_NOTIFICATION_EMAIL` | no | Remitente y destinatarios de avisos. |
+   | `RUN_SEED` | no | `auto` (por defecto), `true` fuerza el seed, `false` lo desactiva. |
+
+   `SERVICE_PASSWORD_POSTGRES` la genera Coolify sola: no la definas a mano.
+
+4. En **Domains**, asigna `starseerker.cl` al servicio `app` (puerto 3000). Coolify emite
+   el certificado y enruta el tráfico.
+5. Deploy. El primer arranque tarda algo más porque corre migraciones y seed.
+
+### Alternativa: base de datos externa
+
+Si ya tienes PostgreSQL (Neon, Supabase, otro servidor), usa un recurso **Dockerfile** en
+vez del compose y define `DATABASE_URL` a mano. El resto de variables es idéntico.
+
+### Healthcheck
+
+El contenedor expone `GET /api/health`, que además verifica la conexión a la base y
+devuelve 503 si está caída. Ya está configurado como healthcheck de Docker y de Compose,
+así que Coolify no enruta tráfico a un contenedor que no puede atender pedidos.
+
+### Después del primer deploy
+
+1. Entra a `https://starseerker.cl/admin` y **cambia la contraseña del administrador**
+   (o crea tu usuario y desactiva el del seed).
+2. Registra el webhook de Mercado Pago apuntando a
+   `https://starseerker.cl/api/webhooks/mercadopago` y copia su clave en `MP_WEBHOOK_SECRET`.
+3. Verifica el dominio remitente en Resend (SPF + DKIM).
+4. Carga los productos reales con sus imágenes desde el panel; los del seed son de ejemplo.
+
+### Actualizaciones y respaldos
+
+- Cada deploy reconstruye la imagen y vuelve a correr `migrate deploy`: las migraciones
+  nuevas se aplican solas.
+- Respalda el volumen `starseerker-postgres` (Coolify → Backups del servicio PostgreSQL).
+  Ahí viven pedidos, productos y configuración de despachos.
+
+---
+
+## Ejecución local sin Docker
+
+Ver "Puesta en marcha" más arriba. Para probar la imagen tal como corre en Coolify:
+
+```bash
+docker compose up --build
+```

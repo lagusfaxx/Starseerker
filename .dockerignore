@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.github
+.env
+.env.*
+!.env.example
+npm-debug.log*
+*.log
+.DS_Store
+.vscode
+.idea
+README.md
+scripts/smoke.mjs

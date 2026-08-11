@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { siteUrl } from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans-stack" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://starseerker.cl"),
+  metadataBase: new URL(siteUrl()),
   title: {
     default: "STARSEEKER Chile — Distribuidor oficial",
     template: "%s | STARSEEKER Chile",

@@ -1,5 +1,6 @@
 import { MercadoPagoConfig, Payment, Preference } from "mercadopago";
 import type { Order, OrderItem } from "@prisma/client";
+import { siteUrl } from "@/lib/site";
 
 function client(): MercadoPagoConfig {
   const accessToken = process.env.MP_ACCESS_TOKEN;
@@ -8,10 +9,6 @@ function client(): MercadoPagoConfig {
     accessToken,
     options: { timeout: 10_000 },
   });
-}
-
-export function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://starseerker.cl").replace(/\/$/, "");
 }
 
 export type PreferenceResult = { id: string; initPoint: string };

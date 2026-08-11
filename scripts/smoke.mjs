@@ -1,6 +1,8 @@
 import { chromium } from "playwright";
 
 const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? "admin@starseerker.cl";
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? "cambia-esta-clave";
 const log = (...a) => console.log("•", ...a);
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
@@ -13,8 +15,8 @@ page.on("response", (r) => {
 
 // 1. Login admin
 await page.goto(`${BASE}/admin`);
-await page.fill('input[name="email"]', "admin@starseerker.cl");
-await page.fill('input[name="password"]', "clave-de-prueba-123");
+await page.fill('input[name="email"]', ADMIN_EMAIL);
+await page.fill('input[name="password"]', ADMIN_PASSWORD);
 await page.click('button[type="submit"]');
 await page.waitForURL("**/admin");
 log("login ok →", page.url());

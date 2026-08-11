@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import type { Order, OrderItem } from "@prisma/client";
 import { formatCLP } from "@/lib/format";
-import { siteUrl } from "@/lib/mercadopago";
+import { siteUrl } from "@/lib/site";
 
 function resend(): Resend | null {
   const key = process.env.RESEND_API_KEY;
