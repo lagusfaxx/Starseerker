@@ -1,0 +1,84 @@
+# ---------------------------------------------------------------------------
+# Despliegue con Docker Compose. Es el archivo que Coolify usa cuando eliges
+# el tipo de recurso "Docker Compose".
+#
+# En Coolify:
+#   1. Crea el recurso "Docker Compose" apuntando a este repositorio.
+#   2. Pega las variables de .env.example en "Environment Variables".
+#   3. Asigna tu dominio al servicio "app", puerto 3000.
+# El servicio "db" no se expone al exterior: solo lo alcanza "app" por la red
+# interna de Coolify.
+# ---------------------------------------------------------------------------
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-starseeker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-starseeker}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-starseeker} -d ${POSTGRES_DB:-starseeker}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-starseeker}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-starseeker}?schema=public
+      APP_URL: ${APP_URL:?define APP_URL con tu dominio publico https}
+      SESSION_SECRET: ${SESSION_SECRET:?define SESSION_SECRET}
+      NODE_ENV: production
+      PORT: 3000
+
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET}
+      MP_CURRENCY: ${MP_CURRENCY:-CLP}
+      MP_SANDBOX: ${MP_SANDBOX:-false}
+
+      BLUEX_API_KEY: ${BLUEX_API_KEY}
+      BLUEX_TOKEN: ${BLUEX_TOKEN}
+      BLUEX_ORIGIN_DISTRICT: ${BLUEX_ORIGIN_DISTRICT}
+      BLUEX_SERVICE_TYPES: ${BLUEX_SERVICE_TYPES:-EX}
+      BLUEX_PRODUCT_FAMILY: ${BLUEX_PRODUCT_FAMILY:-PAQU}
+      BLUEX_BASE_URL: ${BLUEX_BASE_URL:-https://apigw.bluex.cl}
+
+      STORE_NAME: ${STORE_NAME:-STARSEEKER Chile}
+      STORE_EMAIL: ${STORE_EMAIL:-hola@starseerker.cl}
+      FREE_SHIPPING_THRESHOLD: ${FREE_SHIPPING_THRESHOLD:-60000}
+      SHIPPING_FLAT_RATE: ${SHIPPING_FLAT_RATE:-4990}
+      TAX_RATE: ${TAX_RATE:-0}
+
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrador}
+      # El seed no crea productos; en true agrega el catalogo oficial como borrador.
+      SEED_CATALOG: ${SEED_CATALOG:-false}
+    # Se usa `expose` y no `ports`: el proxy de Coolify enruta por dominio
+    # dentro de su red, sin ocupar el puerto 3000 del servidor. Asi puedes
+    # tener varias aplicaciones en la misma maquina sin que choquen.
+    expose:
+      - '3000'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  postgres-data:

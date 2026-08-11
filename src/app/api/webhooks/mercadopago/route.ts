@@ -1,153 +1,108 @@
-import { NextResponse } from "next/server";
-import crypto from "node:crypto";
-import { prisma } from "@/lib/prisma";
-import { getPayment, mapPaymentStatus } from "@/lib/mercadopago";
-import { sendPaymentApproved, sendPaymentFailed } from "@/lib/email";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { fetchPayment, verifyWebhookSignature } from '@/lib/mercadopago';
+import { applyPaymentUpdate } from '@/lib/orders';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
- * Valida la firma `x-signature` de Mercado Pago.
- * Si no hay secreto configurado se omite (útil en desarrollo).
+ * Receptor de notificaciones (IPN/Webhooks) de Mercado Pago.
+ *
+ * Flujo:
+ *  1. Se valida la firma HMAC de la cabecera `x-signature`.
+ *  2. Se descarta cualquier notificacion que no sea de tipo `payment`.
+ *  3. Se consulta el pago a la API de Mercado Pago (nunca se confia en el body).
+ *  4. Se aplica el resultado al pedido de forma idempotente.
+ *
+ * Mercado Pago reintenta si no recibe 200/201, asi que se responde 200 tambien
+ * cuando la notificacion no aplica: reintentarla no cambiaria el resultado.
  */
-function verifySignature(request: Request, dataId: string): boolean {
-  const secret = process.env.MP_WEBHOOK_SECRET;
-  if (!secret) return true;
-
-  const signature = request.headers.get("x-signature");
-  const requestId = request.headers.get("x-request-id");
-  if (!signature) return false;
-
-  const parts = Object.fromEntries(
-    signature.split(",").map((part) => part.split("=").map((s) => s.trim()) as [string, string]),
-  );
-  const ts = parts.ts;
-  const hash = parts.v1;
-  if (!ts || !hash) return false;
-
-  const manifest = `id:${dataId};request-id:${requestId ?? ""};ts:${ts};`;
-  const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
-
-  try {
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(hash));
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: Request) {
+  const url = new URL(request.url);
+
   let body: Record<string, unknown> = {};
   try {
-    body = await request.json();
+    body = (await request.json()) as Record<string, unknown>;
   } catch {
-    /* Mercado Pago a veces notifica solo por query string. */
+    // Algunas notificaciones antiguas llegan sin cuerpo JSON.
   }
 
-  const url = new URL(request.url);
-  const type = String(body.type ?? body.topic ?? url.searchParams.get("type") ?? "");
-  const dataId = String(
-    (body.data as { id?: string | number } | undefined)?.id ??
-      url.searchParams.get("data.id") ??
-      url.searchParams.get("id") ??
-      "",
-  );
+  const type = url.searchParams.get('type') ?? url.searchParams.get('topic') ?? String(body.type ?? '');
 
-  if (type !== "payment" || !dataId) {
-    // Otros topics (merchant_order, etc.) se confirman sin procesar.
-    return NextResponse.json({ received: true });
+  // El tipo se mira antes que la firma. Mercado Pago manda tambien avisos de
+  // `merchant_order` por cada compra, que no cambian el estado de ningun
+  // pedido: validarlos solo servia para llenar el registro de "firma
+  // rechazada" por notificaciones que igual se iban a descartar.
+  if (type !== 'payment') {
+    return NextResponse.json({ received: true, ignored: type || 'desconocido' });
   }
 
-  if (!verifySignature(request, dataId)) {
-    console.warn("[mp-webhook] Firma inválida para el pago", dataId);
-    return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
+  const data = (body.data ?? {}) as Record<string, unknown>;
+
+  // Lo que se firma es `data.id`, y solo eso. El parametro `id` a secas es de
+  // las notificaciones antiguas (`topic=payment&id=...`) y de las de
+  // merchant_order: meterlo en el manifiesto como si fuera `data.id` producia
+  // una firma que nunca podia coincidir.
+  const dataId =
+    url.searchParams.get('data.id') ?? (data.id !== undefined ? String(data.id) : null);
+  const paymentId = dataId ?? url.searchParams.get('id');
+
+  const signature = verifyWebhookSignature({
+    signatureHeader: request.headers.get('x-signature'),
+    requestId: request.headers.get('x-request-id'),
+    dataId,
+    alternateId: url.searchParams.get('id'),
+  });
+
+  if (!signature.valid) {
+    console.warn('[webhook] firma rechazada:', signature.reason);
+    return NextResponse.json({ error: 'firma invalida' }, { status: 401 });
   }
 
-  try {
-    const payment = await getPayment(dataId);
-    if (!payment?.externalReference) {
-      return NextResponse.json({ received: true });
-    }
+  // El manifiesto documentado es el del id en minusculas con request-id. Si
+  // calzo otro, conviene saberlo: funciona, pero es senal de que la cuenta
+  // firma distinto de lo que dice la documentacion.
+  if (signature.variant && signature.variant !== 'id en minusculas, con request-id') {
+    console.info(`[webhook] firma valida con una variante del manifiesto: ${signature.variant}`);
+  }
 
-    const order = await prisma.order.findUnique({
-      where: { number: payment.externalReference },
-      include: { items: true },
-    });
-    if (!order) {
-      console.warn("[mp-webhook] Pedido no encontrado:", payment.externalReference);
-      return NextResponse.json({ received: true });
-    }
+  if (!paymentId) {
+    return NextResponse.json({ received: true, ignored: 'sin id de pago' });
+  }
 
-    const paymentStatus = mapPaymentStatus(payment.status);
+  const payment = await fetchPayment(paymentId);
+  if (!payment) {
+    // Devolver 200 evita un bucle de reintentos por un pago inexistente.
+    return NextResponse.json({ received: true, ignored: 'pago no encontrado' });
+  }
 
-    // Idempotencia: si ya procesamos este pago con el mismo estado, no repetimos nada.
-    if (order.mpPaymentId === payment.id && order.paymentStatus === paymentStatus) {
-      return NextResponse.json({ received: true, duplicated: true });
-    }
+  const result = await applyPaymentUpdate(payment);
 
-    const wasApproved = order.paymentStatus === "APPROVED";
-    const isApproved = paymentStatus === "APPROVED";
+  if (!result.handled) {
+    console.warn('[webhook] notificacion no aplicada:', result.reason);
+    return NextResponse.json({ received: true, ignored: result.reason });
+  }
 
-    const updated = await prisma.order.update({
-      where: { id: order.id },
+  await prisma.auditLog
+    .create({
       data: {
-        mpPaymentId: payment.id,
-        mpStatusDetail: payment.statusDetail,
-        paymentStatus,
-        paidAt: isApproved ? (order.paidAt ?? new Date()) : order.paidAt,
-        status: isApproved
-          ? order.status === "PENDING"
-            ? "PAID"
-            : order.status
-          : paymentStatus === "REJECTED" || paymentStatus === "CANCELLED"
-            ? "CANCELLED"
-            : order.status,
-        events: {
-          create: {
-            type: `payment_${payment.status}`,
-            message: `Mercado Pago informó el estado "${payment.status}".`,
-            meta: { paymentId: payment.id, statusDetail: payment.statusDetail },
-          },
+        action: 'payment.webhook',
+        entity: 'Order',
+        entityId: result.orderNumber,
+        metadata: {
+          paymentId: payment.id,
+          mpStatus: payment.status,
+          orderStatus: result.status,
         },
       },
-      include: { items: true },
-    });
+    })
+    .catch(() => undefined);
 
-    if (isApproved && !wasApproved) {
-      // Descuento de stock y uso del cupón, una sola vez por pedido.
-      await prisma.$transaction([
-        ...updated.items
-          .filter((item) => item.productId)
-          .map((item) =>
-            prisma.product.update({
-              where: { id: item.productId! },
-              data: { stock: { decrement: item.quantity } },
-            }),
-          ),
-        ...(updated.couponCode
-          ? [
-              prisma.coupon.update({
-                where: { code: updated.couponCode },
-                data: { uses: { increment: 1 } },
-              }),
-            ]
-          : []),
-      ]);
-      await sendPaymentApproved(updated);
-    }
-
-    if ((paymentStatus === "REJECTED" || paymentStatus === "CANCELLED") && !wasApproved) {
-      await sendPaymentFailed(updated);
-    }
-
-    return NextResponse.json({ received: true });
-  } catch (error) {
-    console.error("[mp-webhook]", error);
-    // Devolvemos 500 para que Mercado Pago reintente la notificación.
-    return NextResponse.json({ error: "Error procesando la notificación" }, { status: 500 });
-  }
+  return NextResponse.json({ received: true, order: result.orderNumber, status: result.status });
 }
 
+/** Mercado Pago valida la URL con un GET antes de habilitar el webhook. */
 export async function GET() {
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ status: 'ok', endpoint: 'mercadopago-webhook' });
 }

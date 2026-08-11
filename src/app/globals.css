@@ -1,89 +1,133 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/*
- * Sistema visual: la estructura de la tienda de referencia (titulares
- * condensados en mayúsculas, botones rectangulares, tarjetas separadas por
- * filetes) llevada a una colorimetría en blanco y negro.
- */
-@theme {
-  --color-ink: #000000;
-  --color-ink-soft: #0d0d0f;
-  --color-ink-raise: #151517;
-  --color-ink-line: #262629;
-  --color-bone: #f4f4f4;
-  --color-bone-soft: #c9c9cc;
-  --color-mute: #8f8f96;
-  /* Único acento de la paleta: el propio blanco. */
-  --color-accent: #ffffff;
-
-  --font-display: var(--font-display), "Arial Narrow", system-ui, sans-serif;
-  --font-sans: var(--font-body), system-ui, sans-serif;
-
-  --animate-marquee: marquee 28s linear infinite;
-}
-
-@keyframes marquee {
-  from {
-    transform: translateX(0);
+@layer base {
+  :root {
+    color-scheme: dark;
   }
-  to {
-    transform: translateX(-50%);
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-black text-ink antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04';
+  }
+
+  /* Los titulares de STARSEEKER son condensados, en mayusculas y muy apretados. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-bold uppercase tracking-tight;
+  }
+
+  ::selection {
+    @apply bg-brand text-black;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand ring-offset-2 ring-offset-black;
   }
 }
 
-html {
-  scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
+@layer components {
+  .container-site {
+    @apply mx-auto w-full max-w-site px-4 sm:px-6 lg:px-10;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-display text-sm font-bold uppercase tracking-widest
+      transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand px-8 py-4 text-black hover:bg-brand-600;
+  }
+
+  .btn-dark {
+    @apply btn bg-ink px-8 py-4 text-black hover:bg-ink-soft;
+  }
+
+  .btn-outline {
+    @apply btn border-2 border-ink bg-transparent px-8 py-[14px] text-ink hover:bg-ink hover:text-black;
+  }
+
+  .btn-ghost {
+    @apply btn border border-sand-dark bg-sand px-5 py-3 text-ink hover:border-ink;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-xs;
+  }
+
+  .field {
+    @apply w-full border border-sand-dark bg-sand px-4 py-3 text-sm text-ink
+      placeholder:text-ink-muted focus:border-ink focus:outline-none focus:ring-0;
+  }
+
+  .field-error {
+    @apply border-red-500;
+  }
+
+  .label {
+    @apply mb-1.5 block font-display text-xs font-semibold uppercase tracking-widest text-ink-soft;
+  }
+
+  .error-text {
+    @apply mt-1 block text-xs text-red-600;
+  }
+
+  .section-title {
+    @apply font-display text-3xl font-bold uppercase tracking-tight text-ink sm:text-4xl;
+  }
+
+  .card {
+    @apply border border-sand-dark bg-sand;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-widest;
+  }
+
+  .table-wrap {
+    @apply w-full overflow-x-auto;
+  }
+
+  .admin-table {
+    @apply w-full min-w-[720px] border-collapse text-sm;
+  }
+
+  .admin-table thead th {
+    @apply border-b border-sand-dark bg-sand-dark px-4 py-3 text-left font-display text-xs font-bold uppercase tracking-widest text-ink-soft;
+  }
+
+  .admin-table tbody td {
+    @apply border-b border-sand-dark px-4 py-3 align-middle;
+  }
+
+  .admin-table tbody tr:hover {
+    @apply bg-sand/60;
+  }
 }
 
-body {
-  background: var(--color-ink);
-  color: var(--color-bone);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-}
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 
-/* Titulares condensados, en mayúsculas y apretados. */
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  line-height: 1.05;
-}
+  /* Oculta la barra de desplazamiento en los carruseles horizontales. */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 
-::selection {
-  background: var(--color-bone);
-  color: var(--color-ink);
-}
-
-:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--color-ink),
-    0 0 0 4px var(--color-bone);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #2f2f34 transparent;
-}
-
-.tnum {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -95,208 +139,4 @@ h4 {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* --- Estructura ----------------------------------------------------------- */
-
-@utility container-page {
-  width: 100%;
-  margin-inline: auto;
-  max-width: 100rem;
-  padding-inline: 1rem;
-}
-
-@media (min-width: 640px) {
-  .container-page {
-    padding-inline: 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .container-page {
-    padding-inline: 2.5rem;
-  }
-}
-
-@utility panel {
-  background: var(--color-ink-soft);
-  border: 1px solid var(--color-ink-line);
-}
-
-@utility card {
-  background: var(--color-ink-soft);
-  border: 1px solid var(--color-ink-line);
-}
-
-/* --- Tipografía ----------------------------------------------------------- */
-
-@utility section-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  line-height: 1.05;
-  font-size: 1.875rem;
-}
-
-@media (min-width: 640px) {
-  .section-title {
-    font-size: 2.25rem;
-  }
-}
-
-@utility eyebrow {
-  font-family: var(--font-display);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--color-mute);
-}
-
-@utility display {
-  font-family: var(--font-display);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  line-height: 1.05;
-}
-
-@utility badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-family: var(--font-display);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 0.25rem 0.5rem;
-}
-
-/* --- Botones -------------------------------------------------------------- */
-
-@utility btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-family: var(--font-display);
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 1rem 2rem;
-  border: 2px solid transparent;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
-  cursor: pointer;
-}
-
-@utility btn-primary {
-  background: var(--color-bone);
-  color: var(--color-ink);
-}
-
-/* Alias del panel. */
-@utility btn-light {
-  background: var(--color-bone);
-  color: var(--color-ink);
-}
-
-@utility btn-outline {
-  border-color: var(--color-bone);
-  color: var(--color-bone);
-  padding: calc(1rem - 2px) calc(2rem - 2px);
-}
-
-@utility btn-ghost {
-  border: 1px solid var(--color-ink-line);
-  color: var(--color-bone);
-  padding: 0.75rem 1.25rem;
-}
-
-@utility btn-sm {
-  padding: 0.5625rem 1.125rem;
-  font-size: 0.75rem;
-}
-
-.btn-primary:hover:not(:disabled),
-.btn-light:hover:not(:disabled) {
-  background: #ffffff;
-}
-
-.btn-outline:hover:not(:disabled) {
-  background: var(--color-bone);
-  color: var(--color-ink);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  border-color: var(--color-bone);
-}
-
-.btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* --- Formularios ---------------------------------------------------------- */
-
-@utility field {
-  width: 100%;
-  border: 1px solid var(--color-ink-line);
-  background: var(--color-ink-soft);
-  padding: 0.75rem 0.9375rem;
-  font-size: 0.875rem;
-  color: var(--color-bone);
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-@utility field-label {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-mute);
-  margin-bottom: 0.4375rem;
-}
-
-input.field:focus,
-select.field:focus,
-textarea.field:focus {
-  border-color: var(--color-bone);
-}
-
-input.field::placeholder,
-textarea.field::placeholder {
-  color: #63636a;
-}
-
-select.field {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238f8f96' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='m6 9.5 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.7rem center;
-  padding-right: 2.1rem;
-}
-
-input[type="checkbox"],
-input[type="radio"] {
-  accent-color: var(--color-bone);
-}
-
-/* --- Enlaces -------------------------------------------------------------- */
-
-@utility link-quiet {
-  color: var(--color-mute);
-  transition: color 0.2s ease;
-}
-
-.link-quiet:hover {
-  color: var(--color-bone);
 }

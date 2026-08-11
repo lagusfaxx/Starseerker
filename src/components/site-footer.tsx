@@ -1,84 +1,148 @@
-import Link from "next/link";
-import { NewsletterForm } from "@/components/newsletter-form";
-import { Logo } from "@/components/logo";
-import type { StoreSettings } from "@/lib/settings";
+import Link from 'next/link';
+import { StoreLogo } from './brand';
+import { InstagramIcon } from './icons';
+import { NewsletterForm } from './newsletter-form';
+import { PaymentBadge } from './payment-badge';
 
-const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
+const COLUMNS = [
   {
-    title: "Tienda",
+    title: 'Tienda',
     links: [
-      { label: "Novedades", href: "/productos?filtro=nuevos" },
-      { label: "Más vendidos", href: "/productos?filtro=mas-vendidos" },
-      { label: "Colección", href: "/productos" },
-      { label: "Ofertas", href: "/productos?filtro=ofertas" },
+      { href: '/products', label: 'Catalogo completo' },
+      { href: '/coleccion/molinos', label: 'Molinos de cafe' },
+      { href: '/coleccion/maquinas-espresso', label: 'Maquinas de espresso' },
+      { href: '/coleccion/accesorios', label: 'Accesorios' },
     ],
   },
   {
-    title: "Ayuda",
+    title: 'Ayuda',
     links: [
-      { label: "Centro de ayuda", href: "/ayuda" },
-      { label: "Despachos", href: "/ayuda/despachos" },
-      { label: "Devoluciones", href: "/ayuda/devoluciones" },
-      { label: "Seguir mi pedido", href: "/pedido" },
+      { href: '/ayuda', label: 'Centro de ayuda' },
+      { href: '/seguimiento', label: 'Seguir mi pedido' },
+      { href: '/ayuda#envios', label: 'Despacho' },
+      { href: '/ayuda#pagos', label: 'Medios de pago' },
+      { href: '/ayuda#devoluciones', label: 'Cambios y garantia' },
     ],
   },
   {
-    title: "STARSEEKER Chile",
+    title: 'Cuenta',
     links: [
-      { label: "Quiénes somos", href: "/nosotros" },
-      { label: "Contacto", href: "/contacto" },
-      { label: "Términos", href: "/legal/terminos" },
-      { label: "Privacidad", href: "/legal/privacidad" },
+      { href: '/cuenta/ingresar', label: 'Iniciar sesion' },
+      { href: '/cuenta/registro', label: 'Crear cuenta' },
+      { href: '/cuenta/pedidos', label: 'Mis pedidos' },
+      { href: '/carrito', label: 'Mi carrito' },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { href: '/legal/terminos', label: 'Terminos y condiciones' },
+      { href: '/legal/privacidad', label: 'Politica de privacidad' },
+      { href: '/legal/despacho', label: 'Politica de despacho' },
     ],
   },
 ];
 
-export function SiteFooter({ settings }: { settings: StoreSettings }) {
+export function SiteFooter({
+  storeName,
+  logoUrl,
+  secondaryLogoUrl,
+  secondaryLogoAlt,
+  paymentLogoUrl = null,
+  instagramUrl = '',
+  instagramHandle = '',
+  floatingButton = false,
+}: {
+  storeName: string;
+  logoUrl: string | null;
+  secondaryLogoUrl: string | null;
+  secondaryLogoAlt: string;
+  paymentLogoUrl?: string | null;
+  /** Perfil de Instagram. Vacio = no se muestra el enlace. */
+  instagramUrl?: string;
+  instagramHandle?: string;
+  /** Hay un boton flotante tapando la esquina inferior derecha. */
+  floatingButton?: boolean;
+}) {
   return (
-    <footer className="border-t border-ink-line">
-      <div className="container-page py-14 text-center">
-        <Logo
-          logoUrl={settings.logoUrl}
-          logoHeight={settings.logoHeight}
-          storeName={settings.storeName}
-          className="justify-center"
-        />
-        <p className="mx-auto mt-4 max-w-md text-sm text-mute">{settings.tagline}</p>
+    <footer className="mt-24 border-t border-sand-dark bg-sand text-ink">
+      <div className="container-site grid gap-12 py-16 lg:grid-cols-[1.4fr_2.6fr]">
+        <div>
+          <StoreLogo
+            logoUrl={logoUrl}
+            secondaryLogoUrl={secondaryLogoUrl}
+            secondaryLogoAlt={secondaryLogoAlt}
+            storeName={storeName}
+            className="text-ink"
+          />
+          <p className="mt-5 max-w-sm text-sm leading-relaxed text-ink-muted">
+            Distribuidor oficial STARSEEKER en Chile. Despacho a todo Chile y pago seguro con
+            Mercado Pago.
+          </p>
+          <div className="mt-8">
+            <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-ink-muted">
+              Suscribete y recibe novedades
+            </p>
+            <NewsletterForm />
+          </div>
 
-        <div className="mx-auto mt-9 max-w-md">
-          <NewsletterForm />
+          {instagramUrl ? (
+            <div className="mt-8">
+              <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-ink-muted">
+                Siguenos
+              </p>
+              <a
+                href={instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 border border-white/20 px-4 py-3 text-sm text-ink-soft transition-colors hover:border-brand hover:text-brand"
+              >
+                <InstagramIcon className="h-5 w-5 shrink-0" />
+                {instagramHandle || 'Instagram'}
+              </a>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {COLUMNS.map((column) => (
+            <div key={column.title}>
+              <p className="mb-4 font-display text-xs font-bold uppercase tracking-[0.2em] text-ink-muted">
+                {column.title}
+              </p>
+              <ul className="space-y-2.5">
+                {column.links.map((link) => (
+                  <li key={link.href + link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-ink-soft transition-colors hover:text-brand"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="container-page grid gap-10 border-t border-ink-line py-12 sm:grid-cols-3">
-        {COLUMNS.map((column) => (
-          <nav key={column.title} aria-label={column.title} className="text-center sm:text-left">
-            <h2 className="eyebrow text-bone">{column.title}</h2>
-            <ul className="mt-4 space-y-2.5 text-sm">
-              {column.links.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href} className="link-quiet">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ))}
-      </div>
-
-      <div className="border-t border-ink-line">
-        <div className="container-page flex flex-col items-center gap-2 py-6 text-[11px] text-mute sm:flex-row sm:justify-between">
-          <p>
-            © {new Date().getFullYear()} {settings.storeName}
+      <div className="border-t border-white/10">
+        {/* Con el boton flotante en pantalla hay que dejarle su hueco, en el
+            telefono y en el escritorio: al llegar al final del pie tapa justo
+            el sello del medio de pago, que es la esquina donde vive. */}
+        <div
+          className={`container-site flex flex-col items-center justify-between gap-4 pt-6 sm:flex-row ${
+            floatingButton ? 'pb-24' : 'pb-6'
+          }`}
+        >
+          <p className="text-xs text-ink-muted">
+            &copy; {new Date().getFullYear()} {storeName}. Todos los derechos reservados.
           </p>
-          <p>
-            <a href={`mailto:${settings.supportEmail}`} className="link-quiet">
-              {settings.supportEmail}
-            </a>
-            <span className="mx-2">·</span>
-            Pagos con Mercado Pago
-          </p>
+          <div className="flex items-center gap-3 text-xs text-ink-muted">
+            <span>Pagos procesados por</span>
+            <PaymentBadge logoUrl={paymentLogoUrl} variant="dark" />
+          </div>
         </div>
       </div>
     </footer>

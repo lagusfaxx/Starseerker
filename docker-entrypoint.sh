@@ -1,71 +1,72 @@
 #!/bin/sh
+# ---------------------------------------------------------------------------
+# Arranque del contenedor.
+#  1. Espera a que Postgres acepte conexiones.
+#  2. Aplica las migraciones pendientes.
+#  3. Siembra el catalogo si la base esta vacia.
+#  4. Levanta el servidor de Next.
+# ---------------------------------------------------------------------------
 set -e
 
-# ---------------------------------------------------------------------------
-# Arranque del contenedor en Coolify.
-#
-# 1. Valida las variables imprescindibles.
-# 2. Espera a que PostgreSQL acepte conexiones.
-# 3. Aplica las migraciones pendientes.
-# 4. Siembra los datos iniciales solo si la tienda está vacía (RUN_SEED=true
-#    fuerza el seed, RUN_SEED=false lo desactiva).
-# 5. Cede el control al servidor de Next.
-# ---------------------------------------------------------------------------
-
-fail() {
-  echo "✗ $1"
+if [ -z "$DATABASE_URL" ]; then
+  echo "ERROR: falta la variable DATABASE_URL." >&2
   exit 1
-}
+fi
 
-[ -n "$DATABASE_URL" ] || fail "DATABASE_URL no está configurado. Revisa las variables del servicio en Coolify."
-[ -n "$AUTH_SECRET" ] || fail "AUTH_SECRET no está configurado: el panel no podría iniciar sesión."
+if [ -z "$SESSION_SECRET" ]; then
+  echo "ERROR: falta la variable SESSION_SECRET." >&2
+  exit 1
+fi
 
-# `pg` está en el node_modules del build standalone.
-db_query() {
-  node -e "
-const { Client } = require('pg');
-const client = new Client({ connectionString: process.env.DATABASE_URL });
-client
-  .connect()
-  .then(() => client.query(process.argv[1]))
-  .then((result) => { if (result.rows[0]) console.log(Object.values(result.rows[0])[0]); return client.end(); })
-  .then(() => process.exit(0))
-  .catch(() => process.exit(1));
-" "$1"
-}
+# Una clave con / + @ ? # rompe el parseo de DATABASE_URL y Prisma falla con un
+# error que no explica la causa. Mejor detenerse aqui diciendo que pasa.
+if ! node -e "new URL(process.env.DATABASE_URL)" 2>/dev/null; then
+  echo "ERROR: DATABASE_URL no es una URL valida." >&2
+  echo "  Causa habitual: la contrasena de Postgres contiene / + @ ? # o espacios." >&2
+  echo "  Genera una sin simbolos reservados:  openssl rand -hex 32" >&2
+  echo "  (o codificala en porcentaje si necesitas conservar la actual)." >&2
+  exit 1
+fi
 
-echo "→ Esperando a PostgreSQL…"
-attempt=0
-until db_query "SELECT 1" >/dev/null 2>&1; do
-  attempt=$((attempt + 1))
-  [ "$attempt" -lt 60 ] || fail "PostgreSQL no respondió tras 60 intentos (2 minutos)."
+echo "==> Esperando a la base de datos..."
+ATTEMPT=0
+until node -e "
+  const { PrismaClient } = require('@prisma/client');
+  const p = new PrismaClient();
+  p.\$queryRaw\`SELECT 1\`.then(() => p.\$disconnect()).then(() => process.exit(0)).catch(() => process.exit(1));
+" 2>/dev/null; do
+  ATTEMPT=$((ATTEMPT + 1))
+  if [ "$ATTEMPT" -ge 30 ]; then
+    echo "ERROR: la base de datos no respondio tras 30 intentos." >&2
+    exit 1
+  fi
+  echo "    intento $ATTEMPT/30..."
   sleep 2
 done
-echo "✓ PostgreSQL disponible."
+echo "==> Base de datos disponible."
 
-echo "→ Aplicando migraciones…"
-(cd /app/tools && node node_modules/prisma/build/index.js migrate deploy --schema /app/prisma/schema.prisma)
+echo "==> Aplicando migraciones..."
+# Se invoca el CLI por su ruta real: el enlace de node_modules/.bin
+# se copia como archivo plano en la imagen y perderia sus rutas relativas.
+node node_modules/prisma/build/index.js migrate deploy
 
-SHOULD_SEED="${RUN_SEED:-auto}"
-if [ "$SHOULD_SEED" = "auto" ]; then
-  # El seed ya no crea productos, así que la señal de "base nueva" es que no
-  # exista ningún usuario del panel.
-  ADMINS=$(db_query 'SELECT COUNT(*)::int FROM "AdminUser"' 2>/dev/null || echo "")
-  if [ "$ADMINS" = "0" ]; then
-    SHOULD_SEED=true
+# El seed solo corre la primera vez. La senal de "base nueva" es que todavia no
+# exista ningun usuario: el catalogo puede estar legitimamente vacio, porque los
+# productos los carga el propietario desde el panel.
+if [ "$SKIP_SEED" != "true" ]; then
+  USER_COUNT=$(node -e "
+    const { PrismaClient } = require('@prisma/client');
+    const p = new PrismaClient();
+    p.user.count().then((n) => { console.log(n); return p.\$disconnect(); }).catch(() => { console.log(-1); process.exit(0); });
+  " 2>/dev/null || echo "-1")
+
+  if [ "$USER_COUNT" = "0" ]; then
+    echo "==> Base nueva: creando colecciones, cupones y usuario del panel..."
+    node seed-dist/seed.js || echo "AVISO: el seed no pudo completarse."
   else
-    SHOULD_SEED=false
+    echo "==> Base ya inicializada: se omite el seed."
   fi
 fi
 
-if [ "$SHOULD_SEED" = "true" ]; then
-  echo "→ Sembrando datos iniciales (usuario del panel, categorías y zonas de despacho)…"
-  node /app/seed.mjs || echo "⚠ El seed falló; la aplicación arranca igualmente."
-elif [ "${RUN_SEED:-auto}" = "auto" ]; then
-  echo "→ La base ya está inicializada: se omite el seed."
-else
-  echo "→ Seed desactivado (RUN_SEED=false)."
-fi
-
-echo "✓ Arrancando STARSEEKER Chile en el puerto ${PORT:-3000}."
+echo "==> Iniciando la aplicacion en el puerto ${PORT:-3000}..."
 exec "$@"

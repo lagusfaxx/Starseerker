@@ -1,37 +1,26 @@
-import { ProductCard, type ProductCardData } from "@/components/product-card";
+import { ProductCard, type ProductCardData } from './product-card';
 
-/**
- * Grilla continua: las tarjetas se separan con filetes, sin espacios entre
- * ellas, como en la tienda de referencia.
- */
 export function ProductGrid({
   products,
-  emptyMessage = "No encontramos productos con esos filtros.",
+  emptyMessage = 'No encontramos productos que coincidan con tu busqueda.',
 }: {
   products: ProductCardData[];
   emptyMessage?: string;
 }) {
   if (products.length === 0) {
     return (
-      <div className="border border-ink-line px-6 py-20 text-center text-sm text-mute">
-        {emptyMessage}
+      <div className="border-y border-sand-dark bg-sand px-6 py-24 text-center">
+        <p className="font-display text-lg uppercase tracking-widest text-ink-muted">
+          {emptyMessage}
+        </p>
       </div>
     );
   }
 
-  const columns =
-    products.length === 1
-      ? "sm:grid-cols-1"
-      : products.length === 2
-        ? "sm:grid-cols-2"
-        : products.length === 3
-          ? "sm:grid-cols-2 xl:grid-cols-3"
-          : "sm:grid-cols-2 xl:grid-cols-4";
-
   return (
-    <div className={`grid grid-cols-1 border-t border-l border-ink-line ${columns}`}>
+    <div className="grid grid-cols-1 border-t border-sand-dark sm:grid-cols-2 xl:grid-cols-4">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard key={product.slug} product={product} />
       ))}
     </div>
   );

@@ -1,57 +1,52 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
+import { type NewsletterState, subscribeToNewsletter } from '@/app/actions/newsletter';
+
+const initialState: NewsletterState = { status: 'idle', message: '' };
 
 export function NewsletterForm() {
-  const [email, setEmail] = useState("");
-  const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [message, setMessage] = useState("");
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setState("loading");
-    try {
-      const res = await fetch("/api/newsletter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "No pudimos suscribirte.");
-      setState("done");
-      setMessage("¡Listo! Revisa tu correo.");
-      setEmail("");
-    } catch (err) {
-      setState("error");
-      setMessage(err instanceof Error ? err.message : "No pudimos suscribirte.");
-    }
-  }
+  const [state, formAction] = useActionState(subscribeToNewsletter, initialState);
 
   return (
-    <form onSubmit={onSubmit} className="w-full">
-      <div className="flex flex-col gap-2 sm:flex-row">
+    <form action={formAction} className="max-w-md">
+      <div className="flex">
+        <label htmlFor="newsletter-email" className="sr-only">
+          Correo electronico
+        </label>
         <input
+          id="newsletter-email"
           type="email"
+          name="email"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="tu@correo.cl"
-          className="field sm:flex-1"
-          aria-label="Correo electrónico"
+          maxLength={180}
+          placeholder="tu@correo.com"
+          className="w-full border border-white/20 bg-black/40 px-4 py-3 text-sm text-black placeholder:text-ink-muted focus:border-brand focus:outline-none"
         />
-        <button
-          type="submit"
-          disabled={state === "loading"}
-          className="btn btn-primary shrink-0"
-        >
-          {state === "loading" ? "Enviando…" : "Suscribirme"}
-        </button>
+        <SubmitButton />
       </div>
-      {message && (
-        <p className={`mt-2 text-xs ${state === "error" ? "text-red-400" : "text-accent"}`}>
-          {message}
+      {state.message ? (
+        <p
+          className={`mt-2 text-xs ${state.status === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}
+          role="status"
+        >
+          {state.message}
         </p>
-      )}
+      ) : null}
     </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="shrink-0 bg-brand px-6 font-display text-xs font-bold uppercase tracking-widest text-black transition-colors hover:bg-brand-600 disabled:opacity-60"
+    >
+      {pending ? '...' : 'Enviar'}
+    </button>
   );
 }

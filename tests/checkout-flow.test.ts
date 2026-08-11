@@ -1,0 +1,1951 @@
+/**
+ * Pruebas de la logica critica de la tienda: firma del webhook, reserva de
+ * stock, idempotencia del pago y verificacion de montos.
+ *
+ * Se ejecutan contra la base de datos configurada en DATABASE_URL y limpian
+ * todo lo que crean.
+ *
+ *   npm run test
+ */
+import { createHmac } from 'node:crypto';
+import { PrismaClient, Prisma } from '@prisma/client';
+
+process.env.MP_WEBHOOK_SECRET ||= 'test-webhook-secret';
+process.env.SESSION_SECRET ||= 'test-session-secret-that-is-long-enough-1234';
+process.env.MP_ACCESS_TOKEN ||= 'TEST-token';
+process.env.MP_CURRENCY ||= 'CLP';
+
+const prisma = new PrismaClient();
+
+let passed = 0;
+let failed = 0;
+
+function check(name: string, condition: boolean, detail = '') {
+  if (condition) {
+    passed += 1;
+    console.log(`  ok   ${name}`);
+  } else {
+    failed += 1;
+    console.error(`  FAIL ${name}${detail ? ` — ${detail}` : ''}`);
+  }
+}
+
+function signature(manifest: string, secret: string): string {
+  return createHmac('sha256', secret).update(manifest).digest('hex');
+}
+
+async function testWebhookSignature() {
+  console.log('\nFirma del webhook (x-signature)');
+  const { verifyWebhookSignature } = await import('../src/lib/mercadopago');
+
+  const secret = process.env.MP_WEBHOOK_SECRET!;
+  // Mercado Pago manda el `ts` en SEGUNDOS, no en milisegundos. La prueba lo
+  // hacia con Date.now() y por eso pasaba mientras en produccion se rechazaba
+  // hasta la ultima notificacion: la diferencia entre las dos unidades daba
+  // decadas de antiguedad.
+  const ts = String(Math.floor(Date.now() / 1000));
+  const dataId = '1234567890';
+  const requestId = 'req-abc-123';
+  const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
+  const v1 = signature(manifest, secret);
+
+  check(
+    'acepta una firma valida',
+    verifyWebhookSignature({
+      signatureHeader: `ts=${ts},v1=${v1}`,
+      requestId,
+      dataId,
+    }).valid,
+  );
+
+  check(
+    'rechaza una firma alterada',
+    !verifyWebhookSignature({
+      signatureHeader: `ts=${ts},v1=${'0'.repeat(64)}`,
+      requestId,
+      dataId,
+    }).valid,
+  );
+
+  check(
+    'rechaza si cambia el id del pago',
+    !verifyWebhookSignature({
+      signatureHeader: `ts=${ts},v1=${v1}`,
+      requestId,
+      dataId: '9999999999',
+    }).valid,
+  );
+
+  check(
+    'rechaza una cabecera ausente',
+    !verifyWebhookSignature({ signatureHeader: null, requestId, dataId }).valid,
+  );
+
+  check(
+    'rechaza una cabecera mal formada',
+    !verifyWebhookSignature({ signatureHeader: 'basura', requestId, dataId }).valid,
+  );
+
+  // Un reintento legitimo de Mercado Pago llega horas despues y tiene que
+  // seguir valiendo: rechazarlo es perder un pago que si se cobro.
+  const retryTs = String(Math.floor(Date.now() / 1000) - 6 * 60 * 60);
+  const retryManifest = `id:${dataId};request-id:${requestId};ts:${retryTs};`;
+  check(
+    'acepta un reintento de horas despues',
+    verifyWebhookSignature({
+      signatureHeader: `ts=${retryTs},v1=${signature(retryManifest, secret)}`,
+      requestId,
+      dataId,
+    }).valid,
+  );
+
+  const oldTs = String(Math.floor(Date.now() / 1000) - 3 * 24 * 60 * 60);
+  const oldManifest = `id:${dataId};request-id:${requestId};ts:${oldTs};`;
+  check(
+    'rechaza una firma de hace dias (replay)',
+    !verifyWebhookSignature({
+      signatureHeader: `ts=${oldTs},v1=${signature(oldManifest, secret)}`,
+      requestId,
+      dataId,
+    }).valid,
+  );
+
+  // La misma firma en milisegundos tambien tiene que valer: hay cuentas que
+  // la mandan asi.
+  const msTs = String(Date.now());
+  check(
+    'acepta el ts en milisegundos',
+    verifyWebhookSignature({
+      signatureHeader: `ts=${msTs},v1=${signature(`id:${dataId};request-id:${requestId};ts:${msTs};`, secret)}`,
+      requestId,
+      dataId,
+    }).valid,
+  );
+
+  // El manifiesto omite los pares sin valor.
+  const tsOnly = String(Math.floor(Date.now() / 1000));
+  check(
+    'acepta notificaciones sin request-id',
+    verifyWebhookSignature({
+      signatureHeader: `ts=${tsOnly},v1=${signature(`id:${dataId};ts:${tsOnly};`, secret)}`,
+      requestId: null,
+      dataId,
+    }).valid,
+  );
+
+  // Una cuenta que firma el manifiesto sin el request-id, aunque la cabecera
+  // venga. La documentacion no lo contempla, pero pasa.
+  check(
+    'acepta un manifiesto firmado sin el request-id',
+    verifyWebhookSignature({
+      signatureHeader: `ts=${ts},v1=${signature(`id:${dataId};ts:${ts};`, secret)}`,
+      requestId,
+      dataId,
+    }).valid,
+  );
+
+  // Un id alfanumerico firmado tal cual, sin pasarlo a minusculas.
+  const idMixto = 'AbC123XyZ';
+  check(
+    'acepta un id alfanumerico firmado tal cual',
+    verifyWebhookSignature({
+      signatureHeader: `ts=${ts},v1=${signature(`id:${idMixto};request-id:${requestId};ts:${ts};`, secret)}`,
+      requestId,
+      dataId: idMixto,
+    }).valid,
+  );
+
+  check(
+    'y tambien en minusculas, que es lo documentado',
+    verifyWebhookSignature({
+      signatureHeader: `ts=${ts},v1=${signature(`id:${idMixto.toLowerCase()};request-id:${requestId};ts:${ts};`, secret)}`,
+      requestId,
+      dataId: idMixto,
+    }).valid,
+  );
+
+  // Una clave con un salto de linea o comillas pegadas de mas tiene que seguir
+  // valiendo: es lo que pasa al copiarla al panel del servidor.
+  const claveOriginal = process.env.MP_WEBHOOK_SECRET;
+  for (const sucia of [`${secret}\n`, `"${secret}"`, `  ${secret}  `]) {
+    process.env.MP_WEBHOOK_SECRET = sucia;
+    check(
+      `una clave con ${JSON.stringify(sucia.replace(secret, '…'))} alrededor sigue valiendo`,
+      verifyWebhookSignature({
+        signatureHeader: `ts=${ts},v1=${v1}`,
+        requestId,
+        dataId,
+      }).valid,
+    );
+  }
+  process.env.MP_WEBHOOK_SECRET = claveOriginal;
+
+  // Y el diagnostico: cuando de verdad no calza, el motivo tiene que servir
+  // para arreglarlo, no solo decir que no coincide.
+  const fallo = verifyWebhookSignature({
+    signatureHeader: `ts=${ts},v1=${'0'.repeat(64)}`,
+    requestId,
+    dataId,
+  });
+  check('el rechazo explica que revisar', (fallo.reason ?? '').includes('MP_WEBHOOK_SECRET'));
+  check('y no filtra la clave', !(fallo.reason ?? '').includes(secret));
+}
+
+/**
+ * La ruta del webhook, no solo la funcion que valida la firma.
+ *
+ * Aqui vivia el defecto que llenaba el registro de "firma rechazada": el
+ * parametro `id` a secas de las notificaciones de merchant_order se metia en
+ * el manifiesto como si fuera `data.id`, y esa firma no podia coincidir nunca.
+ */
+async function testWebhookRoute() {
+  console.log('\nRuta del webhook');
+  const { POST } = await import('../src/app/api/webhooks/mercadopago/route');
+  const secret = process.env.MP_WEBHOOK_SECRET!;
+  const ts = String(Math.floor(Date.now() / 1000));
+  const requestId = 'req-ruta-1';
+
+  const pedir = (query: string, cuerpo: unknown, firma: string | null) =>
+    POST(
+      new Request(`https://tienda.cl/api/webhooks/mercadopago?${query}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-request-id': requestId,
+          ...(firma ? { 'x-signature': firma } : {}),
+        },
+        body: JSON.stringify(cuerpo),
+      }),
+    );
+
+  // Un aviso de merchant_order: se descarta antes de mirar la firma, asi que
+  // ya no ensucia el registro ni devuelve 401.
+  const orden = await pedir('topic=merchant_order&id=987654321', { type: 'merchant_order' }, null);
+  check('merchant_order se ignora sin rechazar la firma', orden.status === 200, `status=${orden.status}`);
+  check(
+    'y se anota como ignorado',
+    (await orden.json()).ignored === 'merchant_order',
+  );
+
+  // Un pago con la firma correcta llega hasta la consulta a la API. Sin
+  // credenciales reales el pago no existe, pero eso ya es despues de la firma:
+  // lo que importa es que no responda 401.
+  const dataId = '112233445566';
+  const firmaBuena = `ts=${ts},v1=${signature(`id:${dataId};request-id:${requestId};ts:${ts};`, secret)}`;
+  const pago = await pedir(`type=payment&data.id=${dataId}`, { type: 'payment', data: { id: dataId } }, firmaBuena);
+  check('un pago bien firmado pasa la validacion', pago.status === 200, `status=${pago.status}`);
+
+  // Y uno mal firmado sigue rechazandose.
+  const malo = await pedir(
+    `type=payment&data.id=${dataId}`,
+    { type: 'payment', data: { id: dataId } },
+    `ts=${ts},v1=${'0'.repeat(64)}`,
+  );
+  check('un pago mal firmado se rechaza', malo.status === 401, `status=${malo.status}`);
+}
+
+type Fixture = {
+  productId: string;
+  variantId: string;
+  cleanup: () => Promise<void>;
+};
+
+async function createFixture(stock: number): Promise<Fixture> {
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+
+  const product = await prisma.product.create({
+    data: {
+      slug: `test-producto-${suffix.toLowerCase()}`,
+      name: `Producto de prueba ${suffix}`,
+      sku: `TEST-${suffix}`,
+      price: new Prisma.Decimal(10000),
+      stock,
+      variants: {
+        create: { name: 'Negro', sku: `TEST-${suffix}-NEG`, stock, colorHex: '#000000' },
+      },
+    },
+    include: { variants: true },
+  });
+
+  return {
+    productId: product.id,
+    variantId: product.variants[0]!.id,
+    cleanup: async () => {
+      await prisma.orderItem.deleteMany({ where: { productId: product.id } });
+      await prisma.productVariant.deleteMany({ where: { productId: product.id } });
+      await prisma.product.delete({ where: { id: product.id } }).catch(() => undefined);
+    },
+  };
+}
+
+function buildTotals(fixture: Fixture, quantity: number, unitPrice = 10000) {
+  const price = new Prisma.Decimal(unitPrice);
+  const lineTotal = price.times(quantity);
+  return {
+    lines: [
+      {
+        productId: fixture.productId,
+        variantId: fixture.variantId,
+        name: 'Producto de prueba',
+        variantName: 'Negro',
+        slug: 'test',
+        sku: 'TEST',
+        image: null,
+        unitPrice: price,
+        quantity,
+        lineTotal,
+        available: quantity,
+        inStock: true,
+      },
+    ],
+    itemCount: quantity,
+    subtotal: lineTotal,
+    discountTotal: new Prisma.Decimal(0),
+    shippingTotal: new Prisma.Decimal(0),
+    taxTotal: new Prisma.Decimal(0),
+    total: lineTotal,
+    couponCode: null,
+    couponError: null,
+    freeShippingThreshold: 0,
+    missingForFreeShipping: new Prisma.Decimal(0),
+    hasStockIssues: false,
+    shipping: {
+      cost: new Prisma.Decimal(0),
+      carrier: 'Despacho estandar',
+      serviceType: null,
+      serviceName: 'Despacho estandar',
+      promiseDays: null,
+      districtCode: null,
+      source: 'free' as const,
+      notice: null,
+    },
+  };
+}
+
+const SHIPPING = {
+  fullName: 'Cliente de Prueba',
+  phone: '+56900000000',
+  line1: 'Calle Falsa 123',
+  city: 'Santiago',
+  region: 'Metropolitana de Santiago',
+  regionCode: 'CL-RM',
+  postalCode: '8320000',
+  country: 'CL',
+};
+
+/**
+ * El desglose que se le manda a Mercado Pago.
+ *
+ * Es la prueba que faltaba: Mercado Pago cobra lo que suman los `items`, asi
+ * que si el desglose no da el total del pedido se cobra de menos (el envio
+ * quedaba fuera) o de mas (un cupon que nunca se enviaba). Las dos cosas
+ * terminan igual: el pago no cuadra con el pedido y queda trabado.
+ */
+async function testPreferenceBreakdown() {
+  console.log('\nDesglose enviado a Mercado Pago');
+  const { buildPreferenceItems } = await import('../src/lib/mercadopago');
+  const { Prisma } = await import('@prisma/client');
+
+  const d = (n: number) => new Prisma.Decimal(n);
+  const suma = (items: { unitPrice: number; quantity: number }[]) =>
+    items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
+
+  const base = {
+    orderNumber: 'WC-TEST01',
+    trackingToken: 'tok',
+    payer: { name: 'Ana Perez', email: 'ana@prueba.local' },
+  };
+
+  // El caso exacto que fallaba: 100 de producto y 1 de envio se cobraban 100.
+  const conEnvio = buildPreferenceItems({
+    ...base,
+    lines: [{ id: 'A', title: 'Producto', quantity: 1, lineTotal: d(100) }],
+    discount: d(0),
+    shipping: d(1),
+    tax: d(0),
+    total: d(101),
+  });
+  check('el envio se cobra', suma(conEnvio) === 101, `suma=${suma(conEnvio)}`);
+  check('el envio aparece como concepto propio', conEnvio.some((i) => i.title === 'Despacho'));
+
+  // Sin descuento se conserva la cantidad real, que es lo que espera ver quien compra.
+  const variasUnidades = buildPreferenceItems({
+    ...base,
+    lines: [{ id: 'A', title: 'E55Pro', quantity: 3, lineTotal: d(59_970) }],
+    discount: d(0),
+    shipping: d(0),
+    tax: d(0),
+    total: d(59_970),
+  });
+  check('mantiene la cantidad cuando no hay descuento', variasUnidades[0]?.quantity === 3);
+  check('el total con varias unidades cuadra', suma(variasUnidades) === 59_970);
+
+  // Un cupon: antes no se enviaba y Mercado Pago cobraba el precio de lista.
+  const conCupon = buildPreferenceItems({
+    ...base,
+    lines: [
+      { id: 'A', title: 'Uno', quantity: 1, lineTotal: d(30_000) },
+      { id: 'B', title: 'Dos', quantity: 2, lineTotal: d(20_000) },
+    ],
+    discount: d(5_000),
+    shipping: d(3_990),
+    tax: d(0),
+    total: d(48_990),
+  });
+  check('el descuento se descuenta de verdad', suma(conCupon) === 48_990, `suma=${suma(conCupon)}`);
+
+  // Un descuento que no reparte redondo entre las lineas: el resto tiene que
+  // caer en alguna, no perderse.
+  const conResto = buildPreferenceItems({
+    ...base,
+    lines: [
+      { id: 'A', title: 'Uno', quantity: 1, lineTotal: d(10_000) },
+      { id: 'B', title: 'Dos', quantity: 1, lineTotal: d(10_000) },
+      { id: 'C', title: 'Tres', quantity: 1, lineTotal: d(10_000) },
+    ],
+    discount: d(1_000),
+    shipping: d(0),
+    tax: d(0),
+    total: d(29_000),
+  });
+  check('el redondeo del descuento no pierde pesos', suma(conResto) === 29_000, `suma=${suma(conResto)}`);
+
+  // Los impuestos, cuando la tienda los cobra, tambien tienen que viajar.
+  const conImpuestos = buildPreferenceItems({
+    ...base,
+    lines: [{ id: 'A', title: 'Producto', quantity: 1, lineTotal: d(10_000) }],
+    discount: d(0),
+    shipping: d(2_000),
+    tax: d(1_900),
+    total: d(13_900),
+  });
+  check('los impuestos se cobran', suma(conImpuestos) === 13_900, `suma=${suma(conImpuestos)}`);
+
+  // Muchas lineas chicas con un descuento grande: el reparto no puede dejar
+  // ninguna linea en negativo ni descuadrar la suma. Con el reparto anterior,
+  // que cargaba el resto a la ultima linea, esto tumbaba la compra entera.
+  const muchasLineas = Array.from({ length: 20 }, (_, i) => ({
+    id: `L${i}`,
+    title: `Linea ${i}`,
+    quantity: 1,
+    lineTotal: d(i === 19 ? 1 : 1_000),
+  }));
+  const conMuchas = buildPreferenceItems({
+    ...base,
+    lines: muchasLineas,
+    discount: d(17_100),
+    shipping: d(0),
+    tax: d(0),
+    total: d(1_901),
+  });
+  check('con muchas lineas y descuento grande la suma cuadra', suma(conMuchas) === 1_901, `suma=${suma(conMuchas)}`);
+  check('ninguna linea queda en negativo', conMuchas.every((i) => i.unitPrice > 0));
+
+  // Una linea cuyo total no se divide entre las unidades: no se puede mandar
+  // un precio unitario, asi que va entera y la cantidad se dice en el titulo.
+  const noDivisible = buildPreferenceItems({
+    ...base,
+    lines: [{ id: 'A', title: 'Producto', quantity: 3, lineTotal: d(1_000) }],
+    discount: d(0),
+    shipping: d(0),
+    tax: d(0),
+    total: d(1_000),
+  });
+  check('una linea no divisible se manda entera', noDivisible[0]?.quantity === 1);
+  check('y dice la cantidad en el titulo', noDivisible[0]?.title === 'Producto x3');
+  check('sin perder el importe', suma(noDivisible) === 1_000);
+
+  // Con descuento y una sola unidad el titulo no debe decir "x1".
+  const unaUnidad = buildPreferenceItems({
+    ...base,
+    lines: [{ id: 'A', title: 'Producto', quantity: 1, lineTotal: d(10_000) }],
+    discount: d(1_000),
+    shipping: d(0),
+    tax: d(0),
+    total: d(9_000),
+  });
+  check('no escribe "x1" en el titulo', unaUnidad[0]?.title === 'Producto');
+
+  // Un cupon que se lleva todo el subtotal: queda el envio, y nada mas.
+  const todoDescontado = buildPreferenceItems({
+    ...base,
+    lines: [{ id: 'A', title: 'Producto', quantity: 1, lineTotal: d(10_000) }],
+    discount: d(10_000),
+    shipping: d(2_990),
+    tax: d(0),
+    total: d(2_990),
+  });
+  check('un cupon del 100% deja solo el envio', suma(todoDescontado) === 2_990);
+  check('sin lineas de importe cero', todoDescontado.every((i) => i.unitPrice > 0));
+
+  // Los datos que ve el comprador en Mercado Pago tienen que llegar.
+  const conFoto = buildPreferenceItems({
+    ...base,
+    lines: [
+      {
+        id: 'SKU-1',
+        title: 'Go50',
+        description: 'Negro',
+        pictureUrl: 'https://tienda.cl/foto.jpg',
+        quantity: 1,
+        lineTotal: d(89_990),
+      },
+    ],
+    discount: d(0),
+    shipping: d(0),
+    tax: d(0),
+    total: d(89_990),
+  });
+  check('conserva el sku', conFoto[0]?.id === 'SKU-1');
+  check('conserva la foto', conFoto[0]?.pictureUrl === 'https://tienda.cl/foto.jpg');
+  check('conserva la descripcion', conFoto[0]?.description === 'Negro');
+
+  // Una moneda con decimales: el reparto tiene que cuadrar igual con centavos.
+  const monedaPrevia = process.env.MP_CURRENCY;
+  process.env.MP_CURRENCY = 'USD';
+  try {
+    const conCentavos = buildPreferenceItems({
+      ...base,
+      lines: [
+        { id: 'A', title: 'Uno', quantity: 1, lineTotal: d(19.99) },
+        { id: 'B', title: 'Dos', quantity: 3, lineTotal: d(29.97) },
+      ],
+      discount: d(5),
+      shipping: d(4.5),
+      tax: d(0),
+      total: d(49.46),
+    });
+    const centavos = conCentavos.reduce(
+      (acc, i) => acc + Math.round(i.unitPrice * 100) * i.quantity,
+      0,
+    );
+    check('con centavos la suma tambien cuadra', centavos === 4_946, `centavos=${centavos}`);
+  } finally {
+    if (monedaPrevia === undefined) delete process.env.MP_CURRENCY;
+    else process.env.MP_CURRENCY = monedaPrevia;
+  }
+
+  // Y si algo no cuadra, no se cobra: mejor un error que un cobro equivocado.
+  let reventó = false;
+  try {
+    buildPreferenceItems({
+      ...base,
+      lines: [{ id: 'A', title: 'Producto', quantity: 1, lineTotal: d(100) }],
+      discount: d(0),
+      shipping: d(0),
+      tax: d(0),
+      total: d(999),
+    });
+  } catch {
+    reventó = true;
+  }
+  check('un desglose que no cuadra no llega a cobrarse', reventó);
+}
+
+async function testStockReservation() {
+  console.log('\nReserva de stock al crear el pedido');
+  const { createOrderFromTotals, OrderError } = await import('../src/lib/orders');
+  const fixture = await createFixture(5);
+
+  try {
+    const order = await createOrderFromTotals({
+      totals: buildTotals(fixture, 3),
+      email: 'prueba@starseeker.local',
+      shipping: SHIPPING,
+    });
+
+    const product = await prisma.product.findUnique({ where: { id: fixture.productId } });
+    const variant = await prisma.productVariant.findUnique({ where: { id: fixture.variantId } });
+
+    check('descuenta el stock del producto', product?.stock === 2, `stock=${product?.stock}`);
+    check('descuenta el stock de la variante', variant?.stock === 2, `stock=${variant?.stock}`);
+    check('genera un numero de pedido legible', /^WC-[0-9A-F]{8}$/.test(order.number), order.number);
+    check('genera un token de seguimiento largo', order.trackingToken.length >= 24);
+
+    // Intentar comprar mas de lo que queda debe fallar y no dejar stock negativo.
+    let rejected = false;
+    try {
+      await createOrderFromTotals({
+        totals: buildTotals(fixture, 10),
+        email: 'prueba@starseeker.local',
+        shipping: SHIPPING,
+      });
+    } catch (error) {
+      rejected = error instanceof OrderError;
+    }
+
+    const afterFail = await prisma.product.findUnique({ where: { id: fixture.productId } });
+    check('rechaza una compra sin stock suficiente', rejected);
+    check('no deja el stock en negativo', afterFail?.stock === 2, `stock=${afterFail?.stock}`);
+
+    await prisma.order.delete({ where: { id: order.orderId } });
+  } finally {
+    await fixture.cleanup();
+  }
+}
+
+async function testPaymentIdempotency() {
+  console.log('\nAplicacion del pago (idempotencia y montos)');
+  const { createOrderFromTotals, applyPaymentUpdate } = await import('../src/lib/orders');
+  const fixture = await createFixture(10);
+
+  const order = await createOrderFromTotals({
+    totals: buildTotals(fixture, 2),
+    email: 'prueba@starseeker.local',
+    shipping: SHIPPING,
+  });
+
+  const paymentId = `9${Date.now()}`;
+
+  const approved = {
+    id: paymentId,
+    status: 'approved',
+    statusDetail: 'accredited',
+    externalReference: order.number,
+    transactionAmount: 20000,
+    shippingAmount: null,
+    currencyId: 'CLP',
+    paymentTypeId: 'credit_card',
+    paymentMethodId: 'visa',
+    installments: 1,
+    payerEmail: 'prueba@starseeker.local',
+    raw: { id: paymentId },
+  };
+
+  try {
+    const first = await applyPaymentUpdate(approved);
+    check('aplica el pago aprobado', first.handled && first.status === 'PAID');
+
+    const afterFirst = await prisma.order.findUnique({
+      where: { id: order.orderId },
+      include: { payments: true, events: true },
+    });
+    check('marca el pedido como pagado', afterFirst?.status === 'PAID');
+    check('registra la fecha de pago', afterFirst?.paidAt !== null);
+
+    // Reprocesar la misma notificacion no debe duplicar nada.
+    await applyPaymentUpdate(approved);
+    const afterSecond = await prisma.order.findUnique({
+      where: { id: order.orderId },
+      include: { payments: true, events: true },
+    });
+
+    check(
+      'no duplica el registro de pago al reprocesar',
+      afterSecond?.payments.length === 1,
+      `pagos=${afterSecond?.payments.length}`,
+    );
+    check(
+      'no duplica eventos al reprocesar',
+      afterSecond?.events.length === afterFirst?.events.length,
+      `eventos=${afterSecond?.events.length}`,
+    );
+
+    // Un pedido ya despachado no debe retroceder por una notificacion tardia.
+    await prisma.order.update({ where: { id: order.orderId }, data: { status: 'SHIPPED' } });
+    await applyPaymentUpdate(approved);
+    const afterLate = await prisma.order.findUnique({ where: { id: order.orderId } });
+    check('no retrocede un pedido ya despachado', afterLate?.status === 'SHIPPED');
+
+    // Monto distinto al del pedido: se marca para revision, no se aprueba.
+    const tampered = { ...approved, id: `${paymentId}1`, transactionAmount: 1 };
+    await prisma.order.update({ where: { id: order.orderId }, data: { status: 'PENDING' } });
+    await applyPaymentUpdate(tampered);
+
+    const afterTamper = await prisma.order.findUnique({
+      where: { id: order.orderId },
+      include: { events: true },
+    });
+    check(
+      'no aprueba un pago con monto alterado',
+      afterTamper?.status === 'PENDING',
+      `estado=${afterTamper?.status}`,
+    );
+    check(
+      'deja un evento interno de revision manual',
+      afterTamper?.events.some((event) => !event.isPublic && event.title.includes('Revision')) ?? false,
+    );
+
+    // Mercado Pago informa el despacho aparte del importe de los productos
+    // cuando el envio viajo en `shipments`. Sumar solo el primero daba de
+    // menos y mandaba a revision manual pagos que estaban perfectos.
+    const total = Number(afterTamper!.total);
+    const partido = {
+      ...approved,
+      id: `${paymentId}3`,
+      transactionAmount: total - 1,
+      shippingAmount: 1,
+    };
+    await prisma.order.update({ where: { id: order.orderId }, data: { status: 'PENDING' } });
+    await applyPaymentUpdate(partido);
+
+    const afterSplit = await prisma.order.findUnique({ where: { id: order.orderId } });
+    check(
+      'acepta un pago con el envio informado aparte',
+      afterSplit?.status === 'PAID',
+      `estado=${afterSplit?.status}`,
+    );
+
+    // Un pago rechazado devuelve el stock al inventario.
+    const beforeRestore = await prisma.product.findUnique({ where: { id: fixture.productId } });
+    await applyPaymentUpdate({
+      ...approved,
+      id: `${paymentId}2`,
+      status: 'rejected',
+      statusDetail: 'cc_rejected_other_reason',
+    });
+    const afterRestore = await prisma.product.findUnique({ where: { id: fixture.productId } });
+    const restoredOrder = await prisma.order.findUnique({ where: { id: order.orderId } });
+
+    check('marca el pedido como rechazado', restoredOrder?.status === 'FAILED');
+    check(
+      'devuelve el stock reservado',
+      (afterRestore?.stock ?? 0) === (beforeRestore?.stock ?? 0) + 2,
+      `antes=${beforeRestore?.stock} despues=${afterRestore?.stock}`,
+    );
+
+    // Sin external_reference no se puede asociar el pago a un pedido.
+    const orphan = await applyPaymentUpdate({ ...approved, id: 'x1', externalReference: null });
+    check('ignora un pago sin external_reference', !orphan.handled);
+  } finally {
+    await prisma.payment.deleteMany({ where: { orderId: order.orderId } });
+    await prisma.orderEvent.deleteMany({ where: { orderId: order.orderId } });
+    await prisma.order.delete({ where: { id: order.orderId } }).catch(() => undefined);
+    await fixture.cleanup();
+  }
+}
+
+async function testPricing() {
+  console.log('\nCalculo de totales');
+  const { priceCart } = await import('../src/lib/pricing');
+
+  const empty = await priceCart(null);
+  check('carrito vacio suma cero', empty.total.isZero() && empty.lines.length === 0);
+  check('carrito vacio no cobra envio', empty.shippingTotal.isZero());
+
+  const code = `TEST${Date.now().toString().slice(-6)}`;
+  await prisma.coupon.create({
+    data: { code, type: 'PERCENT', value: new Prisma.Decimal(150), active: true },
+  });
+
+  const fixture = await createFixture(10);
+  const cart = await prisma.cart.create({
+    data: {
+      token: `test-${Date.now()}`,
+      items: { create: { productId: fixture.productId, variantId: fixture.variantId, quantity: 1 } },
+    },
+    include: {
+      items: { include: { product: { include: { images: true } }, variant: true } },
+    },
+  });
+
+  try {
+    const totals = await priceCart(cart, { couponCode: code });
+    check(
+      'un descuento excesivo nunca supera el subtotal',
+      totals.discountTotal.lessThanOrEqualTo(totals.subtotal),
+      `descuento=${totals.discountTotal} subtotal=${totals.subtotal}`,
+    );
+    check('el total nunca es negativo', totals.total.greaterThanOrEqualTo(0));
+
+    const invalid = await priceCart(cart, { couponCode: 'NO-EXISTE' });
+    check('un cupon inexistente no aplica descuento', invalid.discountTotal.isZero());
+    check('un cupon inexistente informa el error', invalid.couponError !== null);
+  } finally {
+    await prisma.cart.delete({ where: { id: cart.id } });
+    await prisma.coupon.deleteMany({ where: { code } });
+    await fixture.cleanup();
+  }
+}
+
+async function testCheckoutValidation() {
+  console.log('\nValidacion del formulario de checkout');
+  const { checkoutSchema, orderUpdateSchema } = await import('../src/lib/validation');
+
+  // FormData.get() devuelve null para los campos que no existen en el
+  // formulario; eso no debe invalidar un checkout correcto.
+  const withNulls = checkoutSchema.safeParse({
+    email: 'cliente@starseeker.local',
+    fullName: 'Cliente Prueba',
+    phone: '+56911112222',
+    line1: 'Av. Siempre Viva 742',
+    line2: null,
+    city: 'Providencia',
+    regionCode: 'CL-RM',
+    postalCode: null,
+    country: 'CL',
+    notes: null,
+    couponCode: null,
+  });
+  check(
+    'acepta campos opcionales ausentes (null)',
+    withNulls.success,
+    withNulls.success ? '' : JSON.stringify(withNulls.error.errors),
+  );
+
+  check(
+    'rechaza un correo invalido',
+    !checkoutSchema.safeParse({
+      email: 'no-es-un-correo',
+      fullName: 'Cliente',
+      phone: '+56911112222',
+      line1: 'Calle 1',
+      city: 'Santiago',
+      regionCode: 'CL-RM',
+      country: 'CL',
+    }).success,
+  );
+
+  check(
+    'rechaza una region inexistente',
+    !checkoutSchema.safeParse({
+      email: 'cliente@starseeker.local',
+      fullName: 'Cliente',
+      phone: '+56911112222',
+      line1: 'Av. Siempre Viva 742',
+      city: 'Santiago',
+      regionCode: 'CL-XX',
+      country: 'CL',
+    }).success,
+  );
+
+  check(
+    'rechaza una direccion demasiado corta',
+    !checkoutSchema.safeParse({
+      email: 'cliente@starseeker.local',
+      fullName: 'Cliente',
+      phone: '+56911112222',
+      line1: 'a',
+      city: 'Santiago',
+      regionCode: 'CL-RM',
+      country: 'CL',
+    }).success,
+  );
+
+  check(
+    'acepta un enlace de seguimiento vacio',
+    orderUpdateSchema.safeParse({
+      orderId: 'abc',
+      status: 'SHIPPED',
+      carrier: 'Chilexpress',
+      trackingNumber: '123',
+      trackingUrl: '',
+      message: null,
+    }).success,
+  );
+
+  check(
+    'rechaza un enlace de seguimiento invalido',
+    !orderUpdateSchema.safeParse({
+      orderId: 'abc',
+      status: 'SHIPPED',
+      trackingUrl: 'no-es-url',
+    }).success,
+  );
+}
+
+async function testDiscardUnpaidOrder() {
+  console.log('\nReversion de un pedido que no llego a la pasarela');
+  const { createOrderFromTotals, discardUnpaidOrder, applyPaymentUpdate } = await import(
+    '../src/lib/orders'
+  );
+  const fixture = await createFixture(8);
+
+  try {
+    const before = await prisma.product.findUnique({ where: { id: fixture.productId } });
+
+    const order = await createOrderFromTotals({
+      totals: buildTotals(fixture, 3),
+      email: 'prueba@starseeker.local',
+      shipping: SHIPPING,
+    });
+
+    const reserved = await prisma.product.findUnique({ where: { id: fixture.productId } });
+    check('reserva el stock al crear el pedido', reserved?.stock === (before?.stock ?? 0) - 3);
+
+    await discardUnpaidOrder(order.orderId);
+
+    const after = await prisma.product.findUnique({ where: { id: fixture.productId } });
+    const gone = await prisma.order.findUnique({ where: { id: order.orderId } });
+    const variant = await prisma.productVariant.findUnique({ where: { id: fixture.variantId } });
+
+    check('elimina el pedido sin pago', gone === null);
+    check(
+      'devuelve el stock del producto',
+      after?.stock === before?.stock,
+      `antes=${before?.stock} despues=${after?.stock}`,
+    );
+    check('devuelve el stock de la variante', variant?.stock === 8, `stock=${variant?.stock}`);
+
+    // Un pedido que ya tiene un pago real no debe poder descartarse.
+    const paid = await createOrderFromTotals({
+      totals: buildTotals(fixture, 1),
+      email: 'prueba@starseeker.local',
+      shipping: SHIPPING,
+    });
+    await applyPaymentUpdate({
+      id: `8${Date.now()}`,
+      status: 'approved',
+      statusDetail: 'accredited',
+      externalReference: paid.number,
+      transactionAmount: 10000,
+      shippingAmount: null,
+      currencyId: 'CLP',
+      paymentTypeId: 'credit_card',
+      paymentMethodId: 'visa',
+      installments: 1,
+      payerEmail: 'prueba@starseeker.local',
+      raw: {},
+    });
+    await discardUnpaidOrder(paid.orderId);
+    const stillThere = await prisma.order.findUnique({ where: { id: paid.orderId } });
+    check('no descarta un pedido ya pagado', stillThere !== null);
+
+    await prisma.payment.deleteMany({ where: { orderId: paid.orderId } });
+    await prisma.orderEvent.deleteMany({ where: { orderId: paid.orderId } });
+    await prisma.order.delete({ where: { id: paid.orderId } }).catch(() => undefined);
+  } finally {
+    await fixture.cleanup();
+  }
+}
+
+/**
+ * El vencimiento de los pedidos por transferencia.
+ *
+ * Es lo que impide que un pedido que nadie pago deje inventario retenido para
+ * siempre: sin esto, con una unidad en stock, un pedido abandonado deja el
+ * producto agotado en la tienda.
+ */
+async function testTransferExpiry() {
+  console.log('\nVencimiento de pedidos por transferencia');
+  const { createOrderFromTotals, applyPaymentUpdate } = await import('../src/lib/orders');
+  const { expireStaleTransferOrders } = await import('../src/lib/order-expiry');
+  const { TRANSFER_KEYS } = await import('../src/lib/bank-transfer');
+
+  const fixture = await createFixture(10);
+  const key = TRANSFER_KEYS.holdHours;
+  const previous = await prisma.setting.findUnique({ where: { key } });
+
+  try {
+    // Una hora de reserva, para no tener que esperar dos dias en la prueba.
+    await prisma.setting.upsert({
+      where: { key },
+      create: { key, value: '1' },
+      update: { value: '1' },
+    });
+
+    const before = await prisma.product.findUnique({ where: { id: fixture.productId } });
+
+    // Recien creado: dentro del plazo, no se toca.
+    const fresco = await createOrderFromTotals({
+      totals: buildTotals(fixture, 2),
+      email: 'prueba@starseeker.local',
+      shipping: SHIPPING,
+      paymentMethod: 'transferencia',
+    });
+
+    await expireStaleTransferOrders();
+    const sigueVivo = await prisma.order.findUnique({ where: { id: fresco.orderId } });
+    check('un pedido dentro del plazo no se cancela', sigueVivo?.status === 'PENDING');
+
+    // El mismo pedido, envejecido a mano dos horas.
+    await prisma.order.update({
+      where: { id: fresco.orderId },
+      data: { createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+    });
+
+    await expireStaleTransferOrders();
+
+    const vencido = await prisma.order.findUnique({ where: { id: fresco.orderId } });
+    const repuesto = await prisma.product.findUnique({ where: { id: fixture.productId } });
+    check('el pedido vencido queda cancelado', vencido?.status === 'CANCELLED', vencido?.status);
+    check(
+      'el stock vuelve al inventario',
+      repuesto?.stock === before?.stock,
+      `antes=${before?.stock} despues=${repuesto?.stock}`,
+    );
+
+    const evento = await prisma.orderEvent.findFirst({
+      where: { orderId: fresco.orderId, status: 'CANCELLED' },
+    });
+    check('deja constancia en el historial del pedido', evento !== null);
+
+    // Un pedido por tarjeta, igual de viejo, no lo toca: la pasarela puede
+    // acreditar tarde y cancelarlo seria mucho peor que retener una unidad.
+    const conTarjeta = await createOrderFromTotals({
+      totals: buildTotals(fixture, 1),
+      email: 'prueba@starseeker.local',
+      shipping: SHIPPING,
+    });
+    await prisma.order.update({
+      where: { id: conTarjeta.orderId },
+      data: { createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000) },
+    });
+    await expireStaleTransferOrders();
+    const tarjeta = await prisma.order.findUnique({ where: { id: conTarjeta.orderId } });
+    check('no toca los pedidos de Mercado Pago', tarjeta?.status === 'PENDING', tarjeta?.status);
+
+    // Una transferencia que si llego (pago real asociado) tampoco vence.
+    const pagado = await createOrderFromTotals({
+      totals: buildTotals(fixture, 1),
+      email: 'prueba@starseeker.local',
+      shipping: SHIPPING,
+      paymentMethod: 'transferencia',
+    });
+    await applyPaymentUpdate({
+      id: `9${Date.now()}`,
+      status: 'approved',
+      statusDetail: 'accredited',
+      externalReference: pagado.number,
+      transactionAmount: 10000,
+      shippingAmount: null,
+      currencyId: 'CLP',
+      paymentTypeId: 'bank_transfer',
+      paymentMethodId: 'transfer',
+      installments: 1,
+      payerEmail: 'prueba@starseeker.local',
+      raw: {},
+    });
+    await prisma.order.update({
+      where: { id: pagado.orderId },
+      data: { createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000) },
+    });
+    await expireStaleTransferOrders();
+    const acreditado = await prisma.order.findUnique({ where: { id: pagado.orderId } });
+    check(
+      'no cancela una transferencia ya acreditada',
+      acreditado?.status !== 'CANCELLED',
+      acreditado?.status,
+    );
+
+    for (const id of [fresco.orderId, conTarjeta.orderId, pagado.orderId]) {
+      await prisma.payment.deleteMany({ where: { orderId: id } });
+      await prisma.orderEvent.deleteMany({ where: { orderId: id } });
+      await prisma.orderItem.deleteMany({ where: { orderId: id } });
+      await prisma.order.delete({ where: { id } }).catch(() => undefined);
+    }
+  } finally {
+    if (previous) {
+      await prisma.setting.update({ where: { key }, data: { value: previous.value } });
+    } else {
+      await prisma.setting.delete({ where: { key } }).catch(() => undefined);
+    }
+    await fixture.cleanup();
+  }
+}
+
+/**
+ * Retiro en tienda.
+ *
+ * Lo que hay que asegurar es que el retiro no se pueda usar para saltarse el
+ * costo del envio: quien manipule el formulario y mande "retiro" en una tienda
+ * que no lo ofrece tiene que pagar el despacho igual.
+ */
+async function testPickup() {
+  console.log('\nRetiro en tienda');
+  const { PICKUP_KEYS, pickupIsUsable, pickupAddressLines } = await import('../src/lib/pickup');
+  const { fulfillmentFlow } = await import('../src/lib/order-status');
+  const { pickupCheckoutSchema, checkoutSchema } = await import('../src/lib/validation');
+
+  const completo = {
+    enabled: true,
+    place: 'Tienda Nomad Brew',
+    address: 'Av. Providencia 1234',
+    commune: 'Providencia',
+    region: 'Region Metropolitana',
+    hours: 'Lunes a viernes de 10 a 18',
+    notes: '',
+    prepDays: 1,
+  };
+
+  check('con direccion y comuna el retiro se ofrece', pickupIsUsable(completo));
+  check('sin direccion no se ofrece', !pickupIsUsable({ ...completo, address: '' }));
+  check('sin comuna no se ofrece', !pickupIsUsable({ ...completo, commune: '' }));
+  check('desactivado no se ofrece aunque este completo', !pickupIsUsable({ ...completo, enabled: false }));
+
+  const lineas = pickupAddressLines(completo);
+  check('la direccion arma sus lineas', lineas[1] === 'Av. Providencia 1234', lineas.join(' | '));
+  check('el horario viaja con la direccion', lineas.some((l) => l.startsWith('Horario:')));
+
+  // Al retirar no se pide direccion, pero si nombre, telefono y correo.
+  const sinDireccion = {
+    fullName: 'Ana Perez',
+    phone: '+56900000000',
+    email: 'ana@prueba.local',
+    notes: '',
+    couponCode: '',
+  };
+  check('el retiro no exige direccion', pickupCheckoutSchema.safeParse(sinDireccion).success);
+  check(
+    'el despacho si exige direccion',
+    !checkoutSchema.safeParse(sinDireccion).success,
+  );
+  check(
+    'el retiro sigue exigiendo telefono',
+    !pickupCheckoutSchema.safeParse({ ...sinDireccion, phone: '' }).success,
+  );
+
+  check(
+    'el recorrido de un retiro pasa por listo para retiro',
+    fulfillmentFlow('retiro').includes('READY_FOR_PICKUP'),
+  );
+  check(
+    'el recorrido de un despacho no lo incluye',
+    !fulfillmentFlow('despacho').includes('READY_FOR_PICKUP'),
+  );
+
+  // La fecha estimada de preparacion cuenta dias habiles: prometer el sabado
+  // un retiro "en un dia" es prometer el domingo, y el domingo no abre nadie.
+  const { pickupReadyLabel, parsePrepDays } = await import('../src/lib/pickup');
+  // Miercoles 5 de agosto de 2026, a media manana en Chile.
+  const miercoles = new Date('2026-08-05T14:00:00Z');
+  check('cero dias es hoy', pickupReadyLabel(0, miercoles) === 'hoy');
+  check('un dia habil es manana', pickupReadyLabel(1, miercoles) === 'manana');
+  check(
+    'dos dias caen en viernes',
+    pickupReadyLabel(2, miercoles).includes('viernes'),
+    pickupReadyLabel(2, miercoles),
+  );
+  check(
+    'tres dias se saltan el fin de semana y caen en lunes',
+    pickupReadyLabel(3, miercoles).includes('lunes'),
+    pickupReadyLabel(3, miercoles),
+  );
+
+  const sabado = new Date('2026-08-08T14:00:00Z');
+  check(
+    'un pedido del sabado "para hoy" se corre al lunes',
+    pickupReadyLabel(0, sabado).includes('lunes'),
+    pickupReadyLabel(0, sabado),
+  );
+  check(
+    'y con un dia de preparacion tambien',
+    pickupReadyLabel(1, sabado).includes('lunes'),
+    pickupReadyLabel(1, sabado),
+  );
+
+  // El calculo va en hora de Chile: el servidor corre en UTC y de noche ya
+  // esta en el dia siguiente.
+  const nocheEnChile = new Date('2026-08-05T23:30:00Z'); // 19:30 en Santiago
+  check(
+    'usa la fecha de Chile y no la del servidor',
+    pickupReadyLabel(1, nocheEnChile) === 'manana',
+    pickupReadyLabel(1, nocheEnChile),
+  );
+
+  check('un valor invalido cae en el valor por defecto', parsePrepDays('abc') === 1);
+  check('no acepta dias negativos', parsePrepDays('-5') === 0);
+  check('ni un plazo absurdo', parsePrepDays('999') === 30);
+
+  // El precio: pedir retiro en una tienda que no lo ofrece no exime del envio.
+  const { priceCart } = await import('../src/lib/pricing');
+  const fixture = await createFixture(5);
+  const previas = await prisma.setting.findMany({
+    where: { key: { in: Object.values(PICKUP_KEYS) } },
+  });
+
+  try {
+    const cart = await prisma.cart.create({
+      data: {
+        token: `test-${Math.random().toString(36).slice(2, 10)}`,
+        items: { create: { productId: fixture.productId, quantity: 1 } },
+      },
+      include: { items: { include: { product: { include: { images: true } }, variant: true } } },
+    });
+
+    await prisma.setting.deleteMany({ where: { key: { in: Object.values(PICKUP_KEYS) } } });
+
+    const sinRetiro = await priceCart(cart, { pickup: true });
+    check(
+      'sin retiro configurado se cotiza el despacho igual',
+      sinRetiro.shipping.source !== 'pickup',
+      sinRetiro.shipping.source,
+    );
+
+    for (const [campo, valor] of Object.entries({
+      [PICKUP_KEYS.enabled]: 'true',
+      [PICKUP_KEYS.place]: completo.place,
+      [PICKUP_KEYS.address]: completo.address,
+      [PICKUP_KEYS.commune]: completo.commune,
+      [PICKUP_KEYS.region]: completo.region,
+      [PICKUP_KEYS.hours]: completo.hours,
+    })) {
+      await prisma.setting.create({ data: { key: campo, value: valor } });
+    }
+
+    const conRetiro = await priceCart(cart, { pickup: true });
+    check('con retiro configurado no se cobra envio', Number(conRetiro.shippingTotal) === 0);
+    check('el resumen dice que es retiro', conRetiro.shipping.source === 'pickup');
+    check(
+      'el total del retiro es solo el subtotal',
+      conRetiro.total.equals(conRetiro.subtotal),
+      `${conRetiro.total} vs ${conRetiro.subtotal}`,
+    );
+
+    const despacho = await priceCart(cart, {
+      destination: { regionCode: 'CL-RM', commune: 'Providencia' },
+    });
+    check(
+      'el despacho sigue cotizando su tarifa',
+      despacho.shipping.source !== 'pickup',
+      despacho.shipping.source,
+    );
+
+    await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+    await prisma.cart.delete({ where: { id: cart.id } });
+  } finally {
+    await prisma.setting.deleteMany({ where: { key: { in: Object.values(PICKUP_KEYS) } } });
+    for (const fila of previas) {
+      await prisma.setting.create({ data: { key: fila.key, value: fila.value } });
+    }
+    await fixture.cleanup();
+  }
+}
+
+/**
+ * El numero de WhatsApp y el perfil de Instagram.
+ *
+ * Quien los escribe en el panel no tiene por que saber que WhatsApp exige el
+ * formato internacional sin signos: el programa hace ese trabajo.
+ */
+/**
+ * Lo que Google tiene permitido mirar.
+ *
+ * Todas las imagenes que se suben desde el panel se sirven bajo /api/media, y
+ * bloquear /api entero las dejaba fuera del alcance de Google: ni el favicon
+ * en los resultados, ni las fotos en Google Imagenes, ni la imagen declarada
+ * en la ficha de cada producto. Es un error de una linea con consecuencias que
+ * no se ven desde el navegador, asi que queda fijado aqui.
+ */
+/**
+ * Lo que Google necesita para mostrar el precio.
+ *
+ * Una ficha con precio y disponibilidad es valida, pero no basta: para que el
+ * precio salga en el resultado tiene que calificar como oferta de tienda, y
+ * eso exige declarar el costo del envio, los plazos y la devolucion. Sin eso
+ * Google muestra el titulo y la descripcion, y se guarda el precio.
+ */
+async function testRichOffer() {
+  console.log('\nDatos de la oferta para Google');
+  const { shippingDetailsJsonLd, returnPolicyJsonLd, priceValidUntil, DEFAULT_POLICIES } =
+    await import('../src/lib/store-policies');
+
+  const envio = shippingDetailsJsonLd(DEFAULT_POLICIES);
+  check('declara el costo del envio', envio.shippingRate.value > 0, String(envio.shippingRate.value));
+  check('y en la moneda de la tienda', envio.shippingRate.currency === 'CLP');
+  check('dice a que pais llega', envio.shippingDestination.addressCountry === 'CL');
+  check(
+    'y cuanto demora',
+    envio.deliveryTime.transitTime.minValue <= envio.deliveryTime.transitTime.maxValue,
+  );
+
+  const campo = (politica: object, nombre: string) =>
+    (politica as Record<string, unknown>)[nombre];
+
+  const devolucion = returnPolicyJsonLd(DEFAULT_POLICIES);
+  check(
+    'la devolucion tiene un plazo',
+    devolucion.returnPolicyCategory.endsWith('MerchantReturnFiniteReturnWindow'),
+  );
+  check('y dice quien paga el envio de vuelta', Boolean(campo(devolucion, 'returnFees')));
+  check(
+    'y cuanto cuesta ese viaje de vuelta',
+    Boolean(campo(devolucion, 'returnShippingFeesAmount')),
+  );
+
+  const gratis = returnPolicyJsonLd({ ...DEFAULT_POLICIES, returnsFree: true });
+  check(
+    'cuando la tienda paga, se declara asi',
+    String(campo(gratis, 'returnFees')).endsWith('FreeReturn'),
+  );
+  check(
+    'y sin cobrarle un monto al comprador',
+    campo(gratis, 'returnShippingFeesAmount') === undefined,
+  );
+
+  const sinDevolucion = returnPolicyJsonLd({ ...DEFAULT_POLICIES, returnDays: 0 });
+  check(
+    'cero dias se declara como "no se aceptan"',
+    sinDevolucion.returnPolicyCategory.endsWith('MerchantReturnNotPermitted'),
+  );
+  check('y sin plazo que prometer', !('merchantReturnDays' in sinDevolucion));
+
+  const hasta = priceValidUntil(new Date('2026-07-29T00:00:00Z'));
+  check('el precio se declara vigente a un ano', hasta === '2027-07-29', hasta);
+
+  // El codigo de barras: los largos que existen de verdad y nada mas. Publicar
+  // uno inventado es peor que no publicar ninguno, porque Google lo cruza con
+  // el catalogo de otras tiendas.
+  const { productSchema } = await import('../src/lib/validation');
+  const base = {
+    name: 'Go50',
+    slug: 'go50',
+    price: 74000,
+    sku: 'WC-NANO-001',
+    stock: 5,
+  };
+
+  for (const codigo of ['12345678', '123456789012', '1234567890123', '12345678901234', '']) {
+    check(
+      `acepta un codigo de ${codigo.length || 'cero'} digitos`,
+      productSchema.safeParse({ ...base, gtin: codigo }).success,
+    );
+  }
+  for (const codigo of ['123', '12345678901', 'ABC12345', '1234-5678']) {
+    check(
+      `rechaza "${codigo}"`,
+      !productSchema.safeParse({ ...base, gtin: codigo }).success,
+    );
+  }
+}
+
+async function testRobots() {
+  console.log('\nPermisos para los buscadores');
+  const robots = (await import('../src/app/robots')).default;
+  const reglas = robots().rules;
+  const regla = Array.isArray(reglas) ? reglas[0]! : reglas;
+
+  const permitido = ([] as string[]).concat(regla.allow ?? []);
+  const bloqueado = ([] as string[]).concat(regla.disallow ?? []);
+
+  check('las imagenes subidas quedan al alcance de Google', permitido.includes('/api/media/'));
+  check('el resto de la API sigue cerrada', bloqueado.includes('/api'));
+
+  // La regla mas larga es la que manda: asi /api/media gana sobre /api.
+  const gana = (ruta: string) => {
+    const largo = (lista: string[]) =>
+      lista.filter((r) => ruta.startsWith(r)).reduce((max, r) => Math.max(max, r.length), -1);
+    return largo(permitido) >= largo(bloqueado);
+  };
+
+  check('una foto de producto se puede rastrear', gana('/api/media/abc123'));
+  check('el webhook de pagos no', !gana('/api/webhooks/mercadopago'));
+  check('el panel tampoco', !gana('/admin/pedidos'));
+  check('ni el checkout', !gana('/checkout'));
+  check('pero el catalogo si', gana('/products/go50'));
+}
+
+async function testSocial() {
+  console.log('\nWhatsApp e Instagram');
+  const { normalizeWhatsapp, normalizeInstagram, whatsappUrl } = await import('../src/lib/social');
+
+  for (const escrito of ['+56 9 1234 5678', '56912345678', '912345678', '9 1234 5678']) {
+    check(
+      `"${escrito}" queda como 56912345678`,
+      normalizeWhatsapp(escrito) === '56912345678',
+      normalizeWhatsapp(escrito),
+    );
+  }
+  check('un movil sin el 9 se completa', normalizeWhatsapp('12345678') === '56912345678');
+  check('un numero de otro pais se respeta', normalizeWhatsapp('+1 415 555 0100') === '14155550100');
+  check('sin digitos no hay numero', normalizeWhatsapp('escribeme!') === '');
+
+  const url = whatsappUrl('56912345678', 'Hola, quiero la Go50');
+  check('el enlace apunta a wa.me', url.startsWith('https://wa.me/56912345678?text='));
+  check('y lleva el mensaje escapado', url.includes('Hola%2C%20quiero%20la%20Go50'));
+  check(
+    'sin mensaje propio se manda uno por defecto',
+    whatsappUrl('56912345678', '   ').includes('consulta'),
+  );
+
+  for (const escrito of [
+    '@nomadbrew',
+    'nomadbrew',
+    'https://www.instagram.com/nomadbrew',
+    'instagram.com/nomadbrew/',
+  ]) {
+    const perfil = normalizeInstagram(escrito);
+    check(
+      `"${escrito}" apunta al perfil correcto`,
+      perfil.url === 'https://www.instagram.com/nomadbrew',
+      perfil.url,
+    );
+    check(`y muestra el usuario`, perfil.handle === '@nomadbrew', perfil.handle);
+  }
+  check('sin usuario no hay enlace', normalizeInstagram('  ').url === '');
+}
+
+async function testShipping() {
+  console.log('\nCotizador de envios');
+  const { quoteShipping, isBluexpressEnabled, trackingUrlFor } = await import('../src/lib/shipping');
+  const { Prisma } = await import('@prisma/client');
+
+  const items = [{ quantity: 1, weightGrams: 500, lengthCm: 20, widthCm: 12, heightCm: 12 }];
+
+  // Sin credenciales de Blue Express la tienda debe seguir cobrando envio.
+  check('detecta que Blue Express no esta configurado', !isBluexpressEnabled());
+
+  const withoutDestination = await quoteShipping({
+    items,
+    payableSubtotal: new Prisma.Decimal(10000),
+    destination: null,
+  });
+  check('sin direccion el envio queda por calcular', withoutDestination.source === 'pending');
+  check('sin direccion no cobra envio', withoutDestination.cost.isZero());
+
+  const flat = await quoteShipping({
+    items,
+    payableSubtotal: new Prisma.Decimal(10000),
+    destination: { regionCode: 'CL-RM', commune: 'Providencia' },
+  });
+  check(
+    'cae a la tarifa plana si Blue Express no responde',
+    flat.source === 'flat' && flat.cost.greaterThan(0),
+    `source=${flat.source} cost=${flat.cost}`,
+  );
+
+  // El umbral de envio gratis manda por sobre cualquier tarifa.
+  process.env.FREE_SHIPPING_THRESHOLD = '50000';
+  const free = await quoteShipping({
+    items,
+    payableSubtotal: new Prisma.Decimal(60000),
+    destination: { regionCode: 'CL-RM', commune: 'Providencia' },
+  });
+  check('aplica envio gratis sobre el umbral', free.source === 'free' && free.cost.isZero());
+  process.env.FREE_SHIPPING_THRESHOLD = '0';
+
+  const empty = await quoteShipping({
+    items: [],
+    payableSubtotal: new Prisma.Decimal(0),
+    destination: { regionCode: 'CL-RM', commune: 'Providencia' },
+  });
+  check('un carrito vacio no cobra envio', empty.cost.isZero());
+
+  const badRegion = await quoteShipping({
+    items,
+    payableSubtotal: new Prisma.Decimal(10000),
+    destination: { regionCode: 'CL-XX', commune: 'Providencia' },
+  });
+  check('una region invalida no rompe la cotizacion', badRegion.cost.greaterThanOrEqualTo(0));
+
+  check(
+    'arma el enlace de seguimiento de Blue Express',
+    (trackingUrlFor('Blue Express', 'ABC123') ?? '').includes('ABC123'),
+  );
+  check('no inventa enlace para otro transportista', trackingUrlFor('Otro', 'ABC123') === null);
+  check('sin numero de seguimiento no hay enlace', trackingUrlFor('Blue Express', '') === null);
+
+  // --- Tarifas manuales por region -----------------------------------------
+  const { PrismaClient } = await import('@prisma/client');
+  const db = new PrismaClient();
+
+  await db.shippingRate.deleteMany({ where: { regionCode: { in: ['CL-MA', 'CL-AI'] } } });
+  await db.shippingRate.create({
+    data: { regionCode: 'CL-MA', price: new Prisma.Decimal(12990), etaDays: 6, active: true },
+  });
+  await db.shippingRate.create({
+    data: { regionCode: 'CL-AI', price: new Prisma.Decimal(0), active: false },
+  });
+
+  try {
+    const magallanes = await quoteShipping({
+      items,
+      payableSubtotal: new Prisma.Decimal(10000),
+      destination: { regionCode: 'CL-MA', commune: 'Punta Arenas' },
+      carrierName: 'Starken',
+    });
+    check(
+      'usa la tarifa manual de la region',
+      magallanes.source === 'manual' && Number(magallanes.cost) === 12990,
+      `source=${magallanes.source} cost=${magallanes.cost}`,
+    );
+    check('informa el plazo cargado a mano', magallanes.promiseDays === 6);
+    check('usa el transportista configurado', magallanes.carrier === 'Starken');
+
+    const sinDespacho = await quoteShipping({
+      items,
+      payableSubtotal: new Prisma.Decimal(10000),
+      destination: { regionCode: 'CL-AI', commune: 'Coyhaique' },
+    });
+    check(
+      'bloquea las regiones sin despacho',
+      sinDespacho.source === 'unavailable',
+      sinDespacho.source,
+    );
+    check('explica por que no se puede comprar', Boolean(sinDespacho.notice));
+
+    const sinTarifa = await quoteShipping({
+      items,
+      payableSubtotal: new Prisma.Decimal(10000),
+      destination: { regionCode: 'CL-VS', commune: 'Vina del Mar' },
+    });
+    check(
+      'una region sin tarifa propia usa la general',
+      sinTarifa.source === 'flat',
+      sinTarifa.source,
+    );
+
+    // El envio gratis manda incluso sobre una region con tarifa propia cara.
+    process.env.FREE_SHIPPING_THRESHOLD = '50000';
+    const gratisEnMagallanes = await quoteShipping({
+      items,
+      payableSubtotal: new Prisma.Decimal(80000),
+      destination: { regionCode: 'CL-MA', commune: 'Punta Arenas' },
+    });
+    check(
+      'el envio gratis manda sobre la tarifa manual',
+      gratisEnMagallanes.source === 'free' && gratisEnMagallanes.cost.isZero(),
+    );
+    process.env.FREE_SHIPPING_THRESHOLD = '0';
+  } finally {
+    await db.shippingRate.deleteMany({ where: { regionCode: { in: ['CL-MA', 'CL-AI'] } } });
+    await db.$disconnect();
+  }
+
+  const { CHILE_REGIONS, isValidRegionCode, regionName } = await import('../src/lib/regions-cl');
+  check('lista las 16 regiones de Chile', CHILE_REGIONS.length === 16);
+  check('valida un codigo de region real', isValidRegionCode('CL-RM'));
+  check('rechaza un codigo de region falso', !isValidRegionCode('CL-ZZ'));
+  check('traduce el codigo a nombre', regionName('CL-VS').includes('Valpara'));
+}
+
+async function testSeo() {
+  console.log('\nSEO por ficha');
+  const {
+    resolveSeoTitle,
+    resolveSeoDescription,
+    resolveSeoImage,
+    absoluteUrl,
+    truncate,
+    searchPreview,
+    SEO_TITLE_LIMIT,
+    SEO_DESCRIPTION_LIMIT,
+  } = await import('../src/lib/seo');
+
+  const fallback = {
+    name: 'E55Pro',
+    tagline: 'Molino electrico de cafe con muelas conicas',
+    body: 'Molino electrico de cafe de la linea STARSEEKER.',
+    image: '/products/e55pro.svg',
+    storeName: 'STARSEEKER Chile',
+  };
+
+  // Sin campos propios se usa el respaldo, nunca una etiqueta vacia.
+  const auto = resolveSeoTitle({}, fallback);
+  check('genera un titulo automatico', auto.includes('E55Pro'), auto);
+  check('agrega el nombre de la tienda si cabe', auto.includes('STARSEEKER Chile'), auto);
+  check('el titulo automatico respeta el limite', auto.length <= SEO_TITLE_LIMIT);
+
+  check(
+    'respeta el titulo personalizado',
+    resolveSeoTitle({ seoTitle: 'Compra E55Pro en Chile' }, fallback) ===
+      'Compra E55Pro en Chile',
+  );
+
+  const longTitle = resolveSeoTitle({ seoTitle: 'a'.repeat(120) }, fallback);
+  check('recorta un titulo demasiado largo', longTitle.length <= SEO_TITLE_LIMIT, longTitle);
+
+  const autoDesc = resolveSeoDescription({}, fallback);
+  check('genera una descripcion automatica', autoDesc.length > 0);
+  check('la descripcion respeta el limite', autoDesc.length <= SEO_DESCRIPTION_LIMIT);
+  check(
+    'respeta la descripcion personalizada',
+    resolveSeoDescription({ seoDescription: 'Envio a todo Chile.' }, fallback) ===
+      'Envio a todo Chile.',
+  );
+
+  check(
+    'no repite el subtitulo si la descripcion ya lo contiene',
+    resolveSeoDescription({}, {
+      name: 'Picopresso',
+      tagline: 'Cafetera espresso manual',
+      body: 'Cafetera espresso manual de la linea STARSEEKER.',
+    }) === 'Cafetera espresso manual de la linea STARSEEKER.',
+    resolveSeoDescription({}, {
+      name: 'Picopresso',
+      tagline: 'Cafetera espresso manual',
+      body: 'Cafetera espresso manual de la linea STARSEEKER.',
+    }),
+  );
+
+  check(
+    'combina subtitulo y descripcion cuando aportan cosas distintas',
+    resolveSeoDescription({}, {
+      name: 'Picopresso',
+      tagline: 'Nivel barista',
+      body: 'Prepara espresso donde quieras.',
+    }) === 'Nivel barista. Prepara espresso donde quieras.',
+  );
+
+  const noFallback = resolveSeoDescription({}, { name: 'Producto sin textos' });
+  check('siempre devuelve algo, aunque no haya textos', noFallback === 'Producto sin textos');
+
+  check(
+    'usa la imagen del producto si no hay una propia',
+    resolveSeoImage({}, fallback) === '/products/e55pro.svg',
+  );
+  check(
+    'respeta la imagen propia',
+    resolveSeoImage({ seoImage: '/og/custom.jpg' }, fallback) === '/og/custom.jpg',
+  );
+
+  check(
+    'convierte rutas relativas en absolutas',
+    absoluteUrl('/og/a.jpg', 'https://tienda.cl') === 'https://tienda.cl/og/a.jpg',
+  );
+  check(
+    'deja intactas las URLs absolutas',
+    absoluteUrl('https://cdn.cl/a.jpg', 'https://tienda.cl') === 'https://cdn.cl/a.jpg',
+  );
+  check('sin imagen devuelve null', absoluteUrl(null, 'https://tienda.cl') === null);
+
+  // El recorte no debe partir palabras por la mitad.
+  const cut = truncate('palabra '.repeat(40), 50);
+  check('no corta una palabra a la mitad', cut.length <= 50 && !cut.includes('palab…'), cut);
+
+  const preview = searchPreview({}, fallback, 'https://tienda.cl', 'productos/e55pro');
+  check(
+    'la vista previa arma la ruta como Google',
+    preview.url === 'tienda.cl › productos › e55pro',
+    preview.url,
+  );
+}
+
+async function testPasswordHashing() {
+  console.log('\nContrasenas');
+  const bcrypt = (await import('bcryptjs')).default;
+
+  const hash = await bcrypt.hash('Secreta123', 12);
+  check('el hash no contiene la contrasena', !hash.includes('Secreta123'));
+  check('valida la contrasena correcta', await bcrypt.compare('Secreta123', hash));
+  check('rechaza una contrasena incorrecta', !(await bcrypt.compare('Secreta124', hash)));
+
+  const { passwordSchema } = await import('../src/lib/validation');
+  check('rechaza contrasenas cortas', !passwordSchema.safeParse('Ab1').success);
+  check('rechaza contrasenas sin numero', !passwordSchema.safeParse('Abcdefgh').success);
+  check('acepta una contrasena valida', passwordSchema.safeParse('Abcdefg1').success);
+}
+
+async function testVerificationCodes() {
+  console.log('\nCodigos de verificacion');
+  const { issueCode, consumeCode, generateCode, MAX_ATTEMPTS } = await import(
+    '../src/lib/verification'
+  );
+
+  const email = `codigo-${Date.now()}@prueba.local`;
+
+  check('el codigo generado tiene seis digitos', /^\d{6}$/.test(generateCode()));
+
+  const { code } = await issueCode(email, 'EMAIL_VERIFICATION');
+  const stored = await prisma.verificationCode.findFirst({
+    where: { email, purpose: 'EMAIL_VERIFICATION' },
+    orderBy: { createdAt: 'desc' },
+  });
+  check('el codigo no se guarda en claro', stored !== null && stored.codeHash !== code);
+
+  const wrong = await consumeCode(email, 'EMAIL_VERIFICATION', code === '000000' ? '111111' : '000000');
+  check('un codigo equivocado no pasa', !wrong.ok);
+
+  const right = await consumeCode(email, 'EMAIL_VERIFICATION', code);
+  check('el codigo correcto pasa', right.ok);
+
+  const reused = await consumeCode(email, 'EMAIL_VERIFICATION', code);
+  check('el codigo no sirve dos veces', !reused.ok && reused.reason === 'not_found');
+
+  // Pedir uno nuevo invalida el anterior: solo vale el ultimo que le llego al
+  // cliente.
+  const first = await issueCode(email, 'PASSWORD_RESET');
+  const second = await issueCode(email, 'PASSWORD_RESET');
+  const oldOne = await consumeCode(email, 'PASSWORD_RESET', first.code);
+  check('el codigo anterior queda invalidado', !oldOne.ok);
+  check('el ultimo codigo sigue sirviendo', (await consumeCode(email, 'PASSWORD_RESET', second.code)).ok);
+
+  // Fuerza bruta: al quinto intento fallido el codigo muere.
+  const target = await issueCode(email, 'EMAIL_VERIFICATION');
+  const decoy = target.code === '999999' ? '888888' : '999999';
+  let lastReason = '';
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    const result = await consumeCode(email, 'EMAIL_VERIFICATION', decoy);
+    if (!result.ok) lastReason = result.reason;
+  }
+  check('se bloquea tras los intentos permitidos', lastReason === 'too_many_attempts');
+  const afterLock = await consumeCode(email, 'EMAIL_VERIFICATION', target.code);
+  check('el codigo bloqueado ya no sirve ni con el numero correcto', !afterLock.ok);
+
+  const expired = await issueCode(email, 'EMAIL_VERIFICATION');
+  await prisma.verificationCode.updateMany({
+    where: { email, purpose: 'EMAIL_VERIFICATION', consumedAt: null },
+    data: { expiresAt: new Date(Date.now() - 1000) },
+  });
+  const vencido = await consumeCode(email, 'EMAIL_VERIFICATION', expired.code);
+  check('un codigo vencido no pasa', !vencido.ok && vencido.reason === 'expired');
+
+  await prisma.verificationCode.deleteMany({ where: { email } });
+}
+
+async function testTransactionalEmail() {
+  console.log('\nCorreo transaccional');
+  const { deliver } = await import('../src/lib/email/send');
+  const { orderPaidEmail, orderStatusEmail } = await import('../src/lib/email/templates');
+  const { escapeHtml } = await import('../src/lib/email/layout');
+  const { statusIsNotifiable } = await import('../src/lib/email/notifications');
+
+  const brand = {
+    storeName: 'Tienda',
+    logoUrl: null,
+    appUrl: 'https://tienda.cl',
+    contactEmail: 'hola@tienda.cl',
+  };
+
+  const order = {
+    number: 'WC-TEST01',
+    customerName: 'Ana',
+    customerNameFull: 'Ana Perez',
+    pickup: null,
+    items: [{ name: 'E55Pro', variantName: 'Negro', quantity: 2, lineTotal: '$59.980' }],
+    subtotal: '$59.980',
+    discountTotal: null,
+    shippingTotal: 'Gratis',
+    taxTotal: null,
+    total: '$59.980',
+    couponCode: null,
+    shippingAddress: ['Ana Perez', 'Calle 123', '', 'Nunoa, Region Metropolitana', '', '+56900000000'],
+    shippingService: 'Blue Express',
+    trackingUrl: 'https://tienda.cl/seguimiento/abc',
+    carrier: 'Blue Express',
+    trackingNumber: '123456789',
+    carrierTrackingUrl: 'https://bluex.cl/123456789',
+    paymentMethod: 'Tarjeta de credito',
+    paidAt: '27 de julio de 2026, 10:30',
+  };
+
+  const receipt = orderPaidEmail(brand, order);
+  check('el comprobante nombra el pedido', receipt.subject.includes('WC-TEST01'));
+  check('el comprobante lleva el total', receipt.html.includes('$59.980'));
+  check('el comprobante lleva el enlace de seguimiento', receipt.html.includes(order.trackingUrl));
+  check('el comprobante trae version en texto plano', receipt.text.includes('WC-TEST01'));
+
+  const shipped = orderStatusEmail(brand, order, 'SHIPPED', null);
+  check('el aviso de despacho trae el numero de seguimiento', shipped.html.includes('123456789'));
+  check('el aviso de despacho enlaza al transportista', shipped.html.includes('bluex.cl'));
+
+  check('el HTML del correo escapa lo que escribe el cliente', escapeHtml('<script>') === '&lt;script&gt;');
+
+  const injected = orderStatusEmail(
+    brand,
+    { ...order, customerName: '<script>alert(1)</script>' },
+    'PREPARING',
+    null,
+  );
+  check('un nombre con etiquetas no inyecta HTML', !injected.html.includes('<script>'));
+
+  // El aviso de retiro es el unico que el cliente lee de pie, a punto de salir
+  // a buscar el pedido: tiene que traer donde ir y con que nombre pedirlo.
+  const retiro = orderStatusEmail(
+    brand,
+    {
+      ...order,
+      pickup: ['Tienda Nomad Brew', 'Av. Providencia 1234', 'Providencia, Region Metropolitana'],
+    },
+    'READY_FOR_PICKUP',
+    'Toca el timbre 501.',
+  );
+  check('el aviso de retiro lleva la direccion', retiro.html.includes('Av. Providencia 1234'));
+  check('el aviso de retiro lleva el numero de pedido', retiro.html.includes('WC-TEST01'));
+  check('el aviso de retiro dice quien retira', retiro.html.includes('Ana Perez'));
+  check('el aviso de retiro incluye las instrucciones', retiro.html.includes('timbre 501'));
+  check('el aviso de retiro trae texto plano', retiro.text.includes('Av. Providencia 1234'));
+  check(
+    'el asunto del retiro se entiende sin abrirlo',
+    retiro.subject.includes('listo para retirar'),
+    retiro.subject,
+  );
+
+  // Un pedido que se retira no habla de despacho en el comprobante.
+  const comprobanteRetiro = orderPaidEmail(brand, {
+    ...order,
+    pickup: ['Tienda Nomad Brew', 'Av. Providencia 1234'],
+  });
+  check('el comprobante de retiro no promete despacho', !comprobanteRetiro.html.includes('Despachamos a'));
+  check('el comprobante de retiro dice donde retirar', comprobanteRetiro.html.includes('Lo retiras en'));
+
+  check('el pago pendiente no genera correo', !statusIsNotifiable('PENDING'));
+  check('el despacho si genera correo', statusIsNotifiable('SHIPPED'));
+
+  // La clave de idempotencia es lo que impide que un reintento del webhook
+  // mande el comprobante dos veces.
+  const dedupeKey = `prueba:${Date.now()}`;
+  const to = `dedupe-${Date.now()}@prueba.local`;
+  const one = await deliver({ to, type: 'test', dedupeKey, email: receipt });
+  const two = await deliver({ to, type: 'test', dedupeKey, email: receipt });
+  check('el primer envio se procesa', one.outcome === 'sent' || one.outcome === 'skipped', one.outcome);
+  check('el segundo envio con la misma clave se descarta', two.outcome === 'duplicate', two.outcome);
+
+  const rejected = await deliver({ to: 'sin-arroba', type: 'test', email: receipt });
+  check('un destinatario invalido no se intenta enviar', rejected.outcome === 'failed');
+
+  await prisma.emailLog.deleteMany({ where: { to } });
+}
+
+/**
+ * El destino de cualquier redireccion absoluta nunca puede quedar apuntando a
+ * la direccion de escucha del contenedor: el navegador no puede abrir
+ * `0.0.0.0:3000` y muestra una pagina de error.
+ */
+async function testPublicOrigin() {
+  console.log('\nOrigen publico para redirecciones');
+  const { publicOrigin } = await import('../src/lib/public-url');
+  const previous = process.env.APP_URL;
+
+  const withHeaders = (headers: Record<string, string>) =>
+    new Request('http://0.0.0.0:3000/api/auth/logout', { method: 'POST', headers });
+
+  process.env.APP_URL = 'https://tienda.starseeker.cl';
+  check(
+    'con APP_URL definida manda al dominio publico',
+    publicOrigin(withHeaders({ host: '0.0.0.0:3000' })) === 'https://tienda.starseeker.cl',
+  );
+
+  delete process.env.APP_URL;
+  check(
+    'sin APP_URL usa las cabeceras del proxy',
+    publicOrigin(withHeaders({ host: 'app:3000', 'x-forwarded-host': 'tienda.starseeker.cl', 'x-forwarded-proto': 'https' })) ===
+      'https://tienda.starseeker.cl',
+  );
+  check(
+    'toma solo el primer valor de una cadena de proxies',
+    publicOrigin(withHeaders({ 'x-forwarded-host': 'tienda.starseeker.cl, interno', 'x-forwarded-proto': 'https, http' })) ===
+      'https://tienda.starseeker.cl',
+  );
+  check(
+    'descarta 0.0.0.0 y cae en localhost',
+    publicOrigin(withHeaders({ host: '0.0.0.0:3000' })) === 'http://localhost:3000',
+  );
+  check(
+    'descarta tambien la direccion comodin IPv6',
+    publicOrigin(withHeaders({ host: '[::]:3000' })) === 'http://localhost:3000',
+  );
+  check(
+    'respeta un host normal',
+    publicOrigin(withHeaders({ host: 'localhost:3000' })) === 'http://localhost:3000',
+  );
+
+  if (previous === undefined) delete process.env.APP_URL;
+  else process.env.APP_URL = previous;
+}
+
+/**
+ * Limpieza de imagenes huerfanas.
+ *
+ * La prueba que faltaba el dia que la limpieza se llevo por delante las fotos
+ * de una franja: para ella los bloques de contenido no usaban ninguna imagen,
+ * asi que las borraba y la ficha quedaba apuntando a URLs que daban 404. Se
+ * comprueba cada sitio donde puede quedar pegada una URL de imagen, incluidos
+ * los que no son una columna de imagen: un ajuste guardado en JSON o una URL
+ * escrita dentro de un texto tambien cuentan como uso.
+ */
+async function testMediaCleanup() {
+  console.log('\nLimpieza de imagenes huerfanas');
+  const { purgeOrphanImages } = await import('../src/lib/media');
+
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+
+  // Todas nacen viejas menos la ultima: la ventana de gracia protege a las
+  // recien subidas y taparia lo que se quiere medir.
+  const vieja = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  async function subir(nombre: string, createdAt = vieja) {
+    const asset = await prisma.mediaAsset.create({
+      data: { filename: nombre, mimeType: 'image/png', size: pixel.length, bytes: pixel, createdAt },
+      select: { id: true },
+    });
+    return asset.id;
+  }
+
+  const enFranja = await subir('franja.png');
+  const enBloque = await subir('bloque.png');
+  const enGaleria = await subir('galeria.png');
+  const enAjusteJson = await subir('logo.png');
+  const enTexto = await subir('descripcion.png');
+  const huerfana = await subir('huerfana.png');
+  const recien = await subir('recien.png', new Date());
+
+  const producto = await prisma.product.create({
+    data: {
+      name: 'Producto de prueba limpieza',
+      slug: `limpieza-${Date.now()}`,
+      sku: `LIMPIEZA-${Date.now()}`,
+      price: new Prisma.Decimal(1000),
+      stock: 1,
+      // Una URL suelta dentro de un texto largo, no en una columna de imagen.
+      description: `Mira la foto: /api/media/${enTexto} y sigue el texto.`,
+      images: { create: [{ url: `/api/media/${enGaleria}`, position: 0 }] },
+      blocks: {
+        create: [
+          {
+            kind: 'gallery',
+            images: [`/api/media/${enFranja}`],
+            position: 0,
+          },
+          { kind: 'split', image: `/api/media/${enBloque}`, position: 1 },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+
+  const ajuste = await prisma.setting.create({
+    data: {
+      key: `prueba_limpieza_${Date.now()}`,
+      value: JSON.stringify({ logo: `/api/media/${enAjusteJson}`, ancho: 200 }),
+    },
+    select: { key: true },
+  });
+
+  const borradas = await purgeOrphanImages();
+
+  const sigueViva = async (id: string) =>
+    (await prisma.mediaAsset.count({ where: { id } })) === 1;
+
+  check('borra la imagen que no usa nadie', !(await sigueViva(huerfana)));
+  check('respeta la foto de una franja de fotos', await sigueViva(enFranja), enFranja);
+  check('respeta la imagen de un bloque de contenido', await sigueViva(enBloque));
+  check('respeta la galeria del producto', await sigueViva(enGaleria));
+  check('respeta una URL guardada dentro de un ajuste en JSON', await sigueViva(enAjusteJson));
+  check('respeta una URL escrita dentro de un texto', await sigueViva(enTexto));
+  check('respeta una imagen recien subida sin guardar todavia', await sigueViva(recien));
+  check('cuenta lo que borro', borradas >= 1, String(borradas));
+
+  await prisma.product.delete({ where: { id: producto.id } });
+  await prisma.setting.delete({ where: { key: ajuste.key } });
+  await prisma.mediaAsset.deleteMany({
+    where: { id: { in: [enFranja, enBloque, enGaleria, enAjusteJson, enTexto, recien] } },
+  });
+}
+
+async function main() {
+  console.log('Ejecutando pruebas de la tienda STARSEEKER...');
+
+  await testWebhookSignature();
+  await testWebhookRoute();
+  await testPreferenceBreakdown();
+  await testCheckoutValidation();
+  await testPricing();
+  await testStockReservation();
+  await testDiscardUnpaidOrder();
+  await testTransferExpiry();
+  await testPickup();
+  await testSocial();
+  await testRobots();
+  await testRichOffer();
+  await testPaymentIdempotency();
+  await testShipping();
+  await testSeo();
+  await testPasswordHashing();
+  await testVerificationCodes();
+  await testTransactionalEmail();
+  await testPublicOrigin();
+  await testMediaCleanup();
+
+  console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
+  await prisma.$disconnect();
+  process.exit(failed > 0 ? 1 : 0);
+}
+
+main().catch(async (error) => {
+  console.error(error);
+  await prisma.$disconnect();
+  process.exit(1);
+});

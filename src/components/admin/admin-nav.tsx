@@ -1,68 +1,47 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
-/** Navegación del panel agrupada por tarea, para no buscar entre una lista larga. */
-const GROUPS: { title: string; links: { href: string; label: string; exact?: boolean }[] }[] = [
-  {
-    title: "Ventas",
-    links: [
-      { href: "/admin", label: "Resumen", exact: true },
-      { href: "/admin/pedidos", label: "Pedidos" },
-      { href: "/admin/cupones", label: "Cupones" },
-      { href: "/admin/mensajes", label: "Mensajes" },
-    ],
-  },
-  {
-    title: "Catálogo",
-    links: [
-      { href: "/admin/productos", label: "Productos" },
-      { href: "/admin/categorias", label: "Categorías" },
-    ],
-  },
-  {
-    title: "Tienda",
-    links: [
-      { href: "/admin/portada", label: "Portada" },
-      { href: "/admin/envios", label: "Envíos por región" },
-      { href: "/admin/ajustes", label: "Ajustes" },
-    ],
-  },
+const LINKS = [
+  { href: '/admin', label: 'Resumen', exact: true },
+  { href: '/admin/estadisticas', label: 'Estadisticas' },
+  { href: '/admin/pedidos', label: 'Pedidos' },
+  { href: '/admin/productos', label: 'Productos' },
+  { href: '/admin/colecciones', label: 'Colecciones' },
+  { href: '/admin/envios', label: 'Envios' },
+  { href: '/admin/banners', label: 'Banners' },
+  { href: '/admin/tiras', label: 'Tiras' },
+  { href: '/admin/menu', label: 'Menu' },
+  { href: '/admin/opiniones', label: 'Opiniones' },
+  { href: '/admin/clientes', label: 'Clientes' },
+  { href: '/admin/cupones', label: 'Cupones' },
+  { href: '/admin/ajustes', label: 'Ajustes' },
 ];
 
 export function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="px-3 pb-4 lg:flex-1">
-      <div className="flex gap-6 overflow-x-auto lg:block lg:space-y-6 lg:overflow-visible">
-        {GROUPS.map((group) => (
-          <div key={group.title}>
-            <p className="eyebrow hidden px-3 pb-2 text-[10px] lg:block">{group.title}</p>
-            <ul className="flex gap-1 lg:flex-col">
-              {group.links.map((link) => {
-                const active = link.exact
-                  ? pathname === link.href
-                  : pathname.startsWith(link.href);
-                return (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className={`block rounded-md px-3 py-2 text-sm whitespace-nowrap transition ${
-                        active
-                          ? "bg-bone font-semibold text-black"
-                          : "text-mute hover:bg-white/5 hover:text-bone"
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+    <nav className="border-b border-sand-dark bg-black" aria-label="Secciones del panel">
+      <div className="container-site flex gap-1 overflow-x-auto no-scrollbar">
+        {LINKS.map((link) => {
+          const active = link.exact ? pathname === link.href : pathname.startsWith(link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={active ? 'page' : undefined}
+              className={`whitespace-nowrap border-b-2 px-4 py-3.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
+                active
+                  ? 'border-brand text-brand'
+                  : 'border-transparent text-ink-soft hover:text-ink'
+              }`}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

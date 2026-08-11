@@ -1,125 +1,175 @@
-import { prisma } from "@/lib/prisma";
+import 'server-only';
 
-export type CartLineInput = { productId: string; quantity: number };
+import { randomBytes } from 'node:crypto';
+import { cookies } from 'next/headers';
+import type { Prisma } from '@prisma/client';
+import { prisma } from './db';
+import { getSessionPayload, isSecureRequest } from './auth';
+import { CART_COOKIE } from './session-token';
 
-export type PricedLine = {
-  productId: string;
-  name: string;
-  slug: string;
-  sku: string;
-  image: string | null;
-  unitPrice: number;
-  quantity: number;
-  lineTotal: number;
-  stock: number;
-};
+const CART_COOKIE_MAX_AGE = 60 * 60 * 24 * 60; // 60 dias
 
-export type CartPricing = {
-  lines: PricedLine[];
-  subtotal: number;
-  /** Problemas de stock o productos inactivos detectados al revalidar. */
-  issues: string[];
-};
-
-/**
- * Revalida el carrito contra la base de datos. Nunca se confía en los precios
- * que llegan desde el navegador: siempre se recalculan aquí.
- */
-export async function priceCart(input: CartLineInput[]): Promise<CartPricing> {
-  const cleaned = input
-    .filter((l) => l.productId && Number.isFinite(l.quantity) && l.quantity > 0)
-    .map((l) => ({ productId: l.productId, quantity: Math.min(Math.floor(l.quantity), 20) }));
-
-  if (cleaned.length === 0) return { lines: [], subtotal: 0, issues: [] };
-
-  const products = await prisma.product.findMany({
-    where: { id: { in: cleaned.map((l) => l.productId) } },
-    include: { images: { orderBy: { position: "asc" }, take: 1 } },
-  });
-
-  const byId = new Map(products.map((p) => [p.id, p]));
-  const lines: PricedLine[] = [];
-  const issues: string[] = [];
-
-  for (const line of cleaned) {
-    const product = byId.get(line.productId);
-    if (!product || !product.active) {
-      issues.push("Un producto de tu carrito ya no está disponible y fue removido.");
-      continue;
-    }
-    if (product.stock <= 0) {
-      issues.push(`${product.name} está sin stock y fue removido del carrito.`);
-      continue;
-    }
-    const quantity = Math.min(line.quantity, product.stock);
-    if (quantity < line.quantity) {
-      issues.push(`Solo quedan ${product.stock} unidades de ${product.name}.`);
-    }
-    lines.push({
-      productId: product.id,
-      name: product.name,
-      slug: product.slug,
-      sku: product.sku,
-      image: product.images[0]?.url ?? null,
-      unitPrice: product.price,
-      quantity,
-      lineTotal: product.price * quantity,
-      stock: product.stock,
-    });
-  }
-
-  return {
-    lines,
-    subtotal: lines.reduce((acc, l) => acc + l.lineTotal, 0),
-    issues,
+export type CartWithItems = Prisma.CartGetPayload<{
+  include: {
+    items: {
+      include: {
+        product: { include: { images: true } };
+        variant: true;
+      };
+    };
   };
+}>;
+
+const cartInclude = {
+  items: {
+    include: {
+      product: { include: { images: { orderBy: { position: 'asc' } } } },
+      variant: true,
+    },
+    orderBy: { createdAt: 'asc' },
+  },
+} satisfies Prisma.CartInclude;
+
+function newCartToken(): string {
+  return randomBytes(24).toString('base64url');
 }
 
-export type CouponResult =
-  | { ok: true; code: string; discount: number; freeShipping: boolean; label: string }
-  | { ok: false; error: string };
+/**
+ * Carrito para renderizar (solo lectura). Los Server Components no pueden
+ * escribir cookies, asi que aqui nunca se crea un carrito nuevo.
+ */
+export async function getCart(): Promise<CartWithItems | null> {
+  const session = await getSessionPayload();
+  const token = (await cookies()).get(CART_COOKIE)?.value;
 
-export async function applyCoupon(
-  rawCode: string,
-  subtotal: number,
-  shippingCost: number,
-): Promise<CouponResult> {
-  const code = rawCode.trim().toUpperCase();
-  if (!code) return { ok: false, error: "Ingresa un código." };
-
-  const coupon = await prisma.coupon.findUnique({ where: { code } });
-  if (!coupon || !coupon.active) return { ok: false, error: "El código no es válido." };
-
-  const now = new Date();
-  if (coupon.startsAt && coupon.startsAt > now) return { ok: false, error: "El código aún no está vigente." };
-  if (coupon.expiresAt && coupon.expiresAt < now) return { ok: false, error: "El código está vencido." };
-  if (coupon.maxUses != null && coupon.uses >= coupon.maxUses) {
-    return { ok: false, error: "El código alcanzó su límite de usos." };
-  }
-  if (subtotal < coupon.minSubtotal) {
-    return { ok: false, error: "Tu compra no alcanza el mínimo de este código." };
+  if (session) {
+    const userCart = await prisma.cart.findFirst({
+      where: { userId: session.sub },
+      include: cartInclude,
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (userCart) return userCart;
   }
 
-  if (coupon.type === "FREE_SHIPPING") {
-    return {
-      ok: true,
-      code,
-      discount: shippingCost,
-      freeShipping: true,
-      label: "Envío gratis",
-    };
+  if (!token) return null;
+  return prisma.cart.findUnique({ where: { token }, include: cartInclude });
+}
+
+/**
+ * Carrito para mutar. Solo debe llamarse desde Server Actions o Route
+ * Handlers, ya que puede necesitar escribir la cookie del carrito.
+ */
+export async function getOrCreateCart(): Promise<CartWithItems> {
+  const session = await getSessionPayload();
+  const store = await cookies();
+  const token = store.get(CART_COOKIE)?.value;
+
+  const anonymousCart = token
+    ? await prisma.cart.findUnique({ where: { token }, include: cartInclude })
+    : null;
+
+  if (!session) {
+    if (anonymousCart) return anonymousCart;
+    const created = await prisma.cart.create({
+      data: { token: newCartToken() },
+      include: cartInclude,
+    });
+    await setCartCookie(store, created.token);
+    return created;
   }
 
-  const discount =
-    coupon.type === "PERCENT"
-      ? Math.round((subtotal * Math.min(coupon.value, 100)) / 100)
-      : Math.min(coupon.value, subtotal);
+  const userCart = await prisma.cart.findFirst({
+    where: { userId: session.sub },
+    include: cartInclude,
+    orderBy: { updatedAt: 'desc' },
+  });
 
-  return {
-    ok: true,
-    code,
-    discount,
-    freeShipping: false,
-    label: coupon.type === "PERCENT" ? `${coupon.value}% de descuento` : "Descuento",
-  };
+  // Al iniciar sesion, lo que el visitante habia agregado como invitado se
+  // fusiona con su carrito guardado en lugar de perderse.
+  if (userCart && anonymousCart && anonymousCart.id !== userCart.id) {
+    await mergeCarts(anonymousCart, userCart.id);
+    await prisma.cart.delete({ where: { id: anonymousCart.id } }).catch(() => undefined);
+    const merged = await prisma.cart.findUnique({
+      where: { id: userCart.id },
+      include: cartInclude,
+    });
+    await setCartCookie(store, merged!.token);
+    return merged!;
+  }
+
+  if (userCart) {
+    await setCartCookie(store, userCart.token);
+    return userCart;
+  }
+
+  if (anonymousCart) {
+    const claimed = await prisma.cart.update({
+      where: { id: anonymousCart.id },
+      data: { userId: session.sub },
+      include: cartInclude,
+    });
+    return claimed;
+  }
+
+  const created = await prisma.cart.create({
+    data: { token: newCartToken(), userId: session.sub },
+    include: cartInclude,
+  });
+  await setCartCookie(store, created.token);
+  return created;
+}
+
+type CookieStore = Awaited<ReturnType<typeof cookies>>;
+
+async function setCartCookie(store: CookieStore, token: string) {
+  store.set(CART_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: await isSecureRequest(),
+    path: '/',
+    maxAge: CART_COOKIE_MAX_AGE,
+  });
+}
+
+async function mergeCarts(source: CartWithItems, targetCartId: string) {
+  for (const item of source.items) {
+    await addQuantity(targetCartId, item.productId, item.variantId, item.quantity);
+  }
+}
+
+/**
+ * Suma unidades de una linea creandola si no existe.
+ *
+ * No se usa `upsert` sobre el indice unico compuesto porque en Postgres dos
+ * filas con `variantId = NULL` se consideran distintas, y los productos sin
+ * variante se duplicarian en el carrito.
+ */
+export async function addQuantity(
+  cartId: string,
+  productId: string,
+  variantId: string | null,
+  quantity: number,
+): Promise<void> {
+  const existing = await prisma.cartItem.findFirst({
+    where: { cartId, productId, variantId },
+  });
+
+  if (existing) {
+    await prisma.cartItem.update({
+      where: { id: existing.id },
+      data: { quantity: existing.quantity + quantity },
+    });
+    return;
+  }
+
+  await prisma.cartItem.create({ data: { cartId, productId, variantId, quantity } });
+}
+
+export async function clearCart(cartId: string) {
+  await prisma.cartItem.deleteMany({ where: { cartId } });
+}
+
+export function cartItemCount(cart: CartWithItems | null): number {
+  if (!cart) return 0;
+  return cart.items.reduce((total, item) => total + item.quantity, 0);
 }

@@ -1,292 +1,202 @@
 /**
- * Datos iniciales.
+ * Carga inicial de datos. Es idempotente: se puede ejecutar tantas veces como
+ * haga falta (por ejemplo en cada deploy) sin duplicar registros.
  *
- * Siempre crea lo estructural: usuario del panel, categorías, zonas de despacho
- * para las 16 regiones y un cupón de bienvenida.
+ *   npm run db:seed
  *
- * NO crea productos. El catálogo lo cargas tú desde el panel con tus precios,
- * fotos y stock reales. Si quieres partir con el esqueleto del catálogo oficial
- * de STARSEEKER (nombres, SKU y categoría, sin precio y sin publicar), ejecuta:
- *
- *   SEED_CATALOG=true npm run db:seed
- *
- * Los productos quedan como borrador (`active: false`) y con precio 0: no
- * aparecen en la tienda hasta que les pongas precio y los publiques.
+ * IMPORTANTE
+ * Los productos se crean con lo minimo verificable: nombre, categoria y SKU.
+ * Las descripciones largas, las caracteristicas, las especificaciones tecnicas
+ * y los precios NO se inventan aqui: son datos del negocio que el propietario
+ * debe cargar desde el panel con la informacion oficial del fabricante y su
+ * propia lista de precios. El panel avisa que fichas estan incompletas.
  */
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import bcrypt from "bcryptjs";
+import { PrismaClient, type DiscountType } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) throw new Error("DATABASE_URL no está configurado.");
+const prisma = new PrismaClient();
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+type ProductSeed = {
+  slug: string;
+  name: string;
+  sku: string;
+  collection: string;
+};
 
-/** Las mismas categorías que usa la marca: molinos, máquinas portátiles y accesorios. */
-const CATEGORIES = [
+const COLLECTIONS = [
   {
-    slug: "molinos",
-    name: "Molinos de café",
-    description: "Molinos eléctricos de sobremesa y portátiles.",
+    slug: 'molinos',
+    name: 'Molinos de cafe',
+    description: 'Molinos electricos de sobremesa y portatiles.',
+    image: null,
     position: 1,
+    active: true,
   },
   {
-    slug: "maquinas-espresso",
-    name: "Máquinas de espresso portátiles",
-    description: "Espresso fuera de casa, con presión real.",
+    slug: 'maquinas-espresso',
+    name: 'Maquinas de espresso portatiles',
+    description: 'Espresso fuera de casa, con presion real.',
+    image: null,
     position: 2,
+    active: true,
   },
   {
-    slug: "accesorios",
-    name: "Accesorios",
-    description: "Portafiltros, tampers, soportes y repuestos originales.",
+    slug: 'accesorios',
+    name: 'Accesorios',
+    description: 'Portafiltros, tampers, soportes y repuestos originales.',
+    image: null,
     position: 3,
+    active: true,
   },
 ];
 
 /**
- * Esqueleto del catálogo oficial de STARSEEKER (starseekercoffee.com).
- * Solo nombre, SKU y categoría: los precios en pesos, las fotos, el stock y las
- * fichas técnicas los cargas tú. Sin `SEED_CATALOG=true` no se crea ninguno.
+ * Catalogo oficial de STARSEEKER. Solo lo verificable: nombre, SKU y coleccion.
+ * Los precios en pesos, las fotos, el stock y las fichas los carga el
+ * propietario desde el panel. Se crean como borrador (`active: false`) y con
+ * precio 0, asi que no aparecen en la tienda hasta que se publiquen.
+ *
+ * Solo se siembran con SEED_CATALOG=true.
  */
-const CATALOG: { name: string; sku: string; category: string }[] = [
+const PRODUCTS: ProductSeed[] = [
   // Molinos
-  { name: "STARSEEKER E55Pro Electric Coffee Grinder", sku: "SS-E55PRO", category: "molinos" },
-  { name: "STARSEEKER E64 Electric Coffee Grinder 64MM", sku: "SS-E64", category: "molinos" },
-  { name: "STARSEEKER EDGE Electric Coffee Grinder", sku: "SS-EDGE", category: "molinos" },
-  { name: "STARSEEKER EDGEPLUS Electric Coffee Grinder", sku: "SS-EDGEPLUS", category: "molinos" },
-  { name: "STARSEEKER EDGE63 Electric Coffee Grinder", sku: "SS-EDGE63", category: "molinos" },
-  {
-    name: "STARSEEKER EDGEMini Electric Portable Coffee Grinder",
-    sku: "SS-EDGEMINI",
-    category: "molinos",
-  },
-  {
-    name: "STARSEEKER Go50 Electric Portable Coffee Grinder",
-    sku: "SS-GO50",
-    category: "molinos",
-  },
-  {
-    name: "STARSEEKER 2-in-1 Black 40mm Burr Coffee Grinder",
-    sku: "SS-2IN1-40",
-    category: "molinos",
-  },
-  // Máquinas portátiles
-  {
-    name: "STARSEEKER Super58 Portable Espresso Machine",
-    sku: "SS-SUPER58",
-    category: "maquinas-espresso",
-  },
-  { name: "STARSEEKER SuperGoBox", sku: "SS-SUPERGOBOX", category: "maquinas-espresso" },
-  { name: "STARSEEKER SuperMiniBox", sku: "SS-SUPERMINIBOX", category: "maquinas-espresso" },
-  {
-    name: "CM-007 Portable Espresso Maker 15Bar Self-Heating",
-    sku: "SS-CM007",
-    category: "maquinas-espresso",
-  },
+  { slug: 'e55pro', name: 'STARSEEKER E55Pro Electric Coffee Grinder', sku: 'SS-E55PRO', collection: 'molinos' },
+  { slug: 'e64', name: 'STARSEEKER E64 Electric Coffee Grinder 64MM', sku: 'SS-E64', collection: 'molinos' },
+  { slug: 'edge', name: 'STARSEEKER EDGE Electric Coffee Grinder', sku: 'SS-EDGE', collection: 'molinos' },
+  { slug: 'edgeplus', name: 'STARSEEKER EDGEPLUS Electric Coffee Grinder', sku: 'SS-EDGEPLUS', collection: 'molinos' },
+  { slug: 'edge63', name: 'STARSEEKER EDGE63 Electric Coffee Grinder', sku: 'SS-EDGE63', collection: 'molinos' },
+  { slug: 'edgemini', name: 'STARSEEKER EDGEMini Electric Portable Coffee Grinder', sku: 'SS-EDGEMINI', collection: 'molinos' },
+  { slug: 'go50', name: 'STARSEEKER Go50 Electric Portable Coffee Grinder', sku: 'SS-GO50', collection: 'molinos' },
+  { slug: '2-in-1-40mm', name: 'STARSEEKER 2-in-1 Black 40mm Burr Coffee Grinder', sku: 'SS-2IN1-40', collection: 'molinos' },
+  // Maquinas portatiles
+  { slug: 'super58', name: 'STARSEEKER Super58 Portable Espresso Machine', sku: 'SS-SUPER58', collection: 'maquinas-espresso' },
+  { slug: 'supergobox', name: 'STARSEEKER SuperGoBox', sku: 'SS-SUPERGOBOX', collection: 'maquinas-espresso' },
+  { slug: 'superminibox', name: 'STARSEEKER SuperMiniBox', sku: 'SS-SUPERMINIBOX', collection: 'maquinas-espresso' },
+  { slug: 'cm-007', name: 'CM-007 Portable Espresso Maker 15Bar Self-Heating', sku: 'SS-CM007', collection: 'maquinas-espresso' },
   // Accesorios
-  {
-    name: "STARSEEKER 2 Ears 58mm Espresso Bottomless Portafilter",
-    sku: "SS-PF58",
-    category: "accesorios",
-  },
-  {
-    name: "STARSEEKER Espresso Gravity Calibrated Tamper / Distributor",
-    sku: "SS-TAMPER",
-    category: "accesorios",
-  },
-  { name: "STARSEEKER WDT Espresso Distribution Tool", sku: "SS-WDT", category: "accesorios" },
-  {
-    name: "Xuanwu Heavy-Duty Stand for Super58 Portable Espresso Maker",
-    sku: "SS-STAND58",
-    category: "accesorios",
-  },
+  { slug: 'portafiltro-58mm', name: 'STARSEEKER 2 Ears 58mm Espresso Bottomless Portafilter', sku: 'SS-PF58', collection: 'accesorios' },
+  { slug: 'tamper-calibrado', name: 'STARSEEKER Espresso Gravity Calibrated Tamper / Distributor', sku: 'SS-TAMPER', collection: 'accesorios' },
+  { slug: 'wdt', name: 'STARSEEKER WDT Espresso Distribution Tool', sku: 'SS-WDT', collection: 'accesorios' },
+  { slug: 'soporte-super58', name: 'Xuanwu Heavy-Duty Stand for Super58 Portable Espresso Maker', sku: 'SS-STAND58', collection: 'accesorios' },
 ];
 
-const ZONES = [
-  {
-    name: "Región Metropolitana",
-    regionCodes: ["RM"],
-    position: 1,
-    rates: [
-      {
-        name: "Retiro en tienda",
-        description: "Te avisamos por correo cuando el pedido esté listo.",
-        price: 0,
-        etaMinDays: 1,
-        etaMaxDays: 2,
-        isPickup: true,
-        position: 0,
-      },
-      {
-        name: "Despacho estándar",
-        description: "Entrega en domicilio",
-        price: 4990,
-        freeOver: 150000,
-        etaMinDays: 1,
-        etaMaxDays: 2,
-        position: 1,
-      },
-      {
-        name: "Despacho express",
-        description: "Entrega el día hábil siguiente",
-        price: 8990,
-        etaMinDays: 1,
-        etaMaxDays: 1,
-        position: 2,
-      },
-    ],
-  },
-  {
-    name: "Zona centro",
-    regionCodes: ["V", "VI", "VII", "XVI"],
-    position: 2,
-    rates: [
-      {
-        name: "Despacho estándar",
-        description: "Entrega en domicilio",
-        price: 6990,
-        freeOver: 150000,
-        etaMinDays: 2,
-        etaMaxDays: 4,
-        position: 1,
-      },
-    ],
-  },
-  {
-    name: "Zona norte",
-    regionCodes: ["XV", "I", "II", "III", "IV"],
-    position: 3,
-    rates: [
-      {
-        name: "Despacho estándar",
-        description: "Entrega en domicilio",
-        price: 8990,
-        freeOver: 200000,
-        etaMinDays: 3,
-        etaMaxDays: 6,
-        position: 1,
-      },
-    ],
-  },
-  {
-    name: "Zona sur",
-    regionCodes: ["VIII", "IX", "XIV", "X"],
-    position: 4,
-    rates: [
-      {
-        name: "Despacho estándar",
-        description: "Entrega en domicilio",
-        price: 8990,
-        freeOver: 200000,
-        etaMinDays: 3,
-        etaMaxDays: 6,
-        position: 1,
-      },
-    ],
-  },
-  {
-    name: "Zonas extremas",
-    regionCodes: ["XI", "XII"],
-    position: 5,
-    rates: [
-      {
-        name: "Despacho a zona extrema",
-        description: "Plazos sujetos a la conectividad del courier",
-        price: 14990,
-        etaMinDays: 5,
-        etaMaxDays: 12,
-        position: 1,
-      },
-    ],
-  },
+const COUPONS: {
+  code: string;
+  type: DiscountType;
+  value: number;
+  minSubtotal: number;
+  maxRedemtions: number | null;
+}[] = [
+  { code: 'BIENVENIDO10', type: 'PERCENT', value: 10, minSubtotal: 0, maxRedemtions: null },
+  { code: 'ENVIOGRATIS', type: 'FIXED', value: 4990, minSubtotal: 30000, maxRedemtions: 500 },
 ];
+
+async function seedCollections() {
+  for (const collection of COLLECTIONS) {
+    await prisma.collection.upsert({
+      where: { slug: collection.slug },
+      create: collection,
+      update: collection,
+    });
+  }
+  console.log(`  colecciones: ${COLLECTIONS.length}`);
+}
+
+async function seedProducts() {
+  if (process.env.SEED_CATALOG !== 'true') {
+    console.log('  productos: 0 (usa SEED_CATALOG=true para cargar el catalogo oficial)');
+    return;
+  }
+
+  let created = 0;
+  for (const [index, seed] of PRODUCTS.entries()) {
+    const existing = await prisma.product.findUnique({ where: { slug: seed.slug } });
+    if (existing) continue;
+
+    const product = await prisma.product.create({
+      data: {
+        slug: seed.slug,
+        name: seed.name,
+        sku: seed.sku,
+        subtitle: '',
+        description: '',
+        price: 0,
+        stock: 0,
+        weightGrams: 1000,
+        lengthCm: 20,
+        widthCm: 20,
+        heightCm: 20,
+        position: index,
+        // Borrador: no se muestra en la tienda hasta que tenga precio y se publique.
+        active: false,
+      },
+    });
+
+    const collection = await prisma.collection.findUnique({ where: { slug: seed.collection } });
+    if (collection) {
+      await prisma.productCollection.create({
+        data: { productId: product.id, collectionId: collection.id },
+      });
+    }
+    created += 1;
+  }
+  console.log(`  productos: ${created} creados como borrador`);
+}
+
+async function seedAdmin() {
+  const email = (process.env.ADMIN_EMAIL ?? 'admin@starseeker.local').toLowerCase();
+  const password = process.env.ADMIN_PASSWORD ?? 'Admin123!';
+  const name = process.env.ADMIN_NAME ?? 'Administrador';
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  // La contrasena solo se fija al crear: un re-seed no debe pisar la clave
+  // que el administrador ya haya cambiado desde el panel.
+  await prisma.user.upsert({
+    where: { email },
+    create: { email, name, passwordHash, role: 'ADMIN', emailVerified: true },
+    update: { role: 'ADMIN', active: true },
+  });
+  console.log(`  administrador: ${email}`);
+}
+
+async function seedCoupons() {
+  for (const coupon of COUPONS) {
+    await prisma.coupon.upsert({
+      where: { code: coupon.code },
+      create: coupon,
+      update: { type: coupon.type, value: coupon.value, minSubtotal: coupon.minSubtotal },
+    });
+  }
+  console.log(`  cupones: ${COUPONS.length}`);
+}
+
+async function seedSettings() {
+  const settings: Record<string, string> = {
+    'store.name': process.env.STORE_NAME ?? 'STARSEEKER Chile',
+    'store.email': process.env.STORE_EMAIL ?? 'hola@starseerker.cl',
+    'store.announcement': 'Despacho a todo Chile - Distribuidor oficial STARSEEKER',
+    'store.marquee': [
+      'Despacho a todo Chile',
+      'Pago seguro con Mercado Pago',
+      'Sigue tu pedido en linea',
+      'Compra como invitado o con cuenta',
+    ].join('\n'),
+  };
+  for (const [key, value] of Object.entries(settings)) {
+    await prisma.setting.upsert({ where: { key }, create: { key, value }, update: {} });
+  }
+  console.log(`  ajustes: ${Object.keys(settings).length}`);
+}
 
 async function main() {
-  // --- Usuario del panel ---
-  const email = (process.env.ADMIN_EMAIL ?? "admin@starseerker.cl").toLowerCase();
-  const password = process.env.ADMIN_PASSWORD ?? "cambia-esta-clave";
-  await prisma.adminUser.upsert({
-    where: { email },
-    update: {},
-    create: {
-      email,
-      name: process.env.ADMIN_NAME ?? "Administrador",
-      passwordHash: await bcrypt.hash(password, 12),
-    },
-  });
-  console.log(`✓ Usuario del panel: ${email}`);
-
-  // --- Categorías ---
-  const categoryIds = new Map<string, string>();
-  for (const category of CATEGORIES) {
-    const saved = await prisma.category.upsert({
-      where: { slug: category.slug },
-      update: category,
-      create: category,
-    });
-    categoryIds.set(category.slug, saved.id);
-  }
-  console.log(`✓ ${CATEGORIES.length} categorías`);
-
-  // --- Zonas y tarifas de despacho ---
-  for (const zone of ZONES) {
-    const { rates, ...zoneData } = zone;
-    const existing = await prisma.shippingZone.findFirst({ where: { name: zone.name } });
-    const saved = existing
-      ? await prisma.shippingZone.update({ where: { id: existing.id }, data: zoneData })
-      : await prisma.shippingZone.create({ data: zoneData });
-
-    for (const rate of rates) {
-      const existingRate = await prisma.shippingRate.findFirst({
-        where: { zoneId: saved.id, name: rate.name },
-      });
-      if (existingRate) {
-        await prisma.shippingRate.update({ where: { id: existingRate.id }, data: rate });
-      } else {
-        await prisma.shippingRate.create({ data: { ...rate, zoneId: saved.id } });
-      }
-    }
-  }
-  console.log(`✓ ${ZONES.length} zonas de despacho cubriendo las 16 regiones`);
-
-  // --- Cupón de bienvenida ---
-  await prisma.coupon.upsert({
-    where: { code: "BIENVENIDA10" },
-    update: {},
-    create: { code: "BIENVENIDA10", type: "PERCENT", value: 10, minSubtotal: 50000 },
-  });
-  console.log("✓ Cupón BIENVENIDA10 (10% sobre $50.000)");
-
-  // --- Catálogo (opcional, como borrador) ---
-  if (process.env.SEED_CATALOG === "true") {
-    let created = 0;
-    for (const [index, item] of CATALOG.entries()) {
-      const slug = item.sku.toLowerCase();
-      const existing = await prisma.product.findUnique({ where: { sku: item.sku } });
-      if (existing) continue;
-      await prisma.product.create({
-        data: {
-          slug,
-          name: item.name,
-          sku: item.sku,
-          price: 0,
-          stock: 0,
-          active: false, // borrador: no aparece en la tienda
-          position: index,
-          categoryId: categoryIds.get(item.category),
-        },
-      });
-      created++;
-    }
-    console.log(
-      `✓ ${created} productos creados como borrador. Ponles precio, fotos y stock en el panel y publícalos.`,
-    );
-  } else {
-    console.log(
-      "· Sin productos: cárgalos desde el panel. Para partir con el esqueleto del catálogo oficial usa SEED_CATALOG=true.",
-    );
-  }
+  console.log('Sembrando datos iniciales...');
+  await seedCollections();
+  await seedProducts();
+  await seedCoupons();
+  await seedSettings();
+  await seedAdmin();
+  console.log('Listo.');
 }
 
 main()
@@ -294,4 +204,6 @@ main()
     console.error(error);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -1,32 +1,32 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
- * Healthcheck para Coolify / Docker.
- *
- * Comprueba que el proceso responde y que la base de datos está alcanzable.
- * Devuelve 503 si la base falla, para que Coolify no envíe tráfico a un
- * contenedor que no puede atender pedidos.
+ * Healthcheck usado por Docker y Coolify. Comprueba tambien la conexion a la
+ * base de datos: un contenedor que responde pero no puede leer Postgres no
+ * sirve para atender pedidos.
  */
 export async function GET() {
-  const startedAt = Date.now();
+  // Sirve tambien para saber que version esta desplegada: al depurar es facil
+  // confundir un problema real con un contenedor que quedo en un commit viejo.
+  const build = {
+    commit: process.env.SOURCE_COMMIT?.slice(0, 8) ?? 'desconocido',
+    appUrl: process.env.APP_URL ?? null,
+    features: ['banners', 'menu', 'media-upload', 'seo-por-ficha', 'envios-por-region'],
+  };
 
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({
-      status: "ok",
-      database: "up",
-      latencyMs: Date.now() - startedAt,
-      uptimeSeconds: Math.round(process.uptime()),
+      status: 'ok',
+      database: 'up',
+      time: new Date().toISOString(),
+      build,
     });
-  } catch (error) {
-    console.error("[health] Base de datos inalcanzable:", error);
-    return NextResponse.json(
-      { status: "degraded", database: "down" },
-      { status: 503 },
-    );
+  } catch {
+    return NextResponse.json({ status: 'degraded', database: 'down', build }, { status: 503 });
   }
 }

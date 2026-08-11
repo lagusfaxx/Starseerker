@@ -1,115 +1,143 @@
-"use client";
-
-import Link from "next/link";
-import Image from "next/image";
-import { useCart } from "@/components/cart-context";
-import { isVideoUrl } from "@/lib/media";
-import { discountPercent, formatCLP } from "@/lib/format";
+import Link from 'next/link';
+import { formatMoney } from '@/lib/money';
+import { PlaneIcon, StoreIcon } from './icons';
+import { MediaImage } from './media-image';
+import { Stars } from './stars';
 
 export type ProductCardData = {
-  id: string;
   slug: string;
   name: string;
   subtitle: string | null;
-  price: number;
-  compareAtPrice: number | null;
-  sku: string;
-  stock: number;
-  isNew: boolean;
-  bestSeller: boolean;
+  price: string;
+  compareAtPrice: string | null;
   image: string | null;
-  imageAlt: string | null;
+  award: string | null;
+  isNew: boolean;
+  /** Reposicion en camino: cambia el aviso de agotado por uno de espera. */
+  incoming: boolean;
+  stock: number;
+  colors: { name: string; hex: string | null }[];
+  /** Nota media de las opiniones publicadas. null = todavia no tiene. */
+  rating?: { average: number; count: number } | null;
+  /** La tienda acepta retiro. Solo se anuncia si ademas queda stock. */
+  pickup?: boolean;
 };
 
 export function ProductCard({
   product,
-  className = "",
+  compact = false,
+  className = '',
 }: {
   product: ProductCardData;
+  /** Recuadro de la foto un 15% mas bajo, para las tiras de la portada. */
+  compact?: boolean;
+  /** Ancho y encaje de la tarjeta cuando la tira es un carrusel. */
   className?: string;
 }) {
-  const { add } = useCart();
-  const off = discountPercent(product.price, product.compareAtPrice);
+  const hasDiscount =
+    product.compareAtPrice !== null && Number(product.compareAtPrice) > Number(product.price);
   const soldOut = product.stock <= 0;
 
   return (
     <article
-      className={`group relative flex h-full flex-col border-r border-b border-ink-line bg-ink ${className}`}
+      className={`group relative flex h-full flex-col border-b border-r border-sand-dark bg-black ${className}`}
     >
-      <Link href={`/producto/${product.slug}`} className="relative block aspect-square overflow-hidden bg-ink-soft">
-        {product.image ? (
-          isVideoUrl(product.image) ? (
-            <video
+      <Link href={`/products/${product.slug}`} className="flex flex-1 flex-col">
+        <div
+          className={`relative overflow-hidden bg-sand ${
+            compact ? 'aspect-[20/17]' : 'aspect-square'
+          }`}
+        >
+          {product.image ? (
+            <MediaImage
               src={product.image}
+              alt={product.name}
+              loading="lazy"
+              sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 78vw"
               className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
-              autoPlay
-              muted
-              loop
-              playsInline
             />
           ) : (
-            <Image
-              src={product.image}
-              alt={product.imageAlt ?? product.name}
-              fill
-              sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 78vw"
-              className="object-contain transition-transform duration-500 group-hover:scale-105"
-            />
-          )
-        ) : (
-          <div className="grid h-full place-items-center font-display text-xs tracking-[0.2em] text-mute uppercase">
-            Sin imagen
-          </div>
-        )}
+            <div className="flex h-full items-center justify-center font-display text-sm uppercase tracking-widest text-ink-muted">
+              Sin imagen
+            </div>
+          )}
 
-        <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
-          {product.isNew && <span className="badge bg-bone text-ink">Nuevo</span>}
-          {off !== null && <span className="badge bg-bone text-ink">-{off}%</span>}
-          {soldOut && <span className="badge bg-ink-raise text-bone">Agotado</span>}
+          <div className="absolute left-4 top-4 flex flex-col items-start gap-2">
+            {product.isNew ? <span className="badge bg-ink text-black">Nuevo</span> : null}
+            {hasDiscount ? <span className="badge bg-brand text-black">Oferta</span> : null}
+            {/* Sin stock pero con reposicion en camino, se anuncia la espera en
+                lugar del agotado: dice lo mismo sin cerrar la puerta. */}
+            {soldOut && product.incoming ? (
+              <span className="badge flex items-center gap-1.5 bg-ink text-black">
+                <PlaneIcon className="h-3 w-3" />
+                En camino
+              </span>
+            ) : soldOut ? (
+              <span className="badge bg-black text-ink">Agotado</span>
+            ) : null}
+          </div>
+
+          {product.award ? (
+            <span className="absolute bottom-4 left-4 max-w-[60%] rounded-sm bg-black/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+              {product.award}
+            </span>
+          ) : null}
+
+          {product.colors.length > 0 ? (
+            <div className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col gap-2.5">
+              {product.colors.slice(0, 4).map((color) => (
+                <span
+                  key={color.name}
+                  title={color.name}
+                  className="h-4 w-4 rounded-full border border-black/10 shadow-sm"
+                  style={{ backgroundColor: color.hex ?? '#8F8F96' }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-1 flex-col p-6">
+          <h3 className="font-display text-xl font-bold uppercase leading-none tracking-tight text-ink transition-colors group-hover:text-brand">
+            {product.name}
+          </h3>
+          {product.subtitle ? (
+            <p className="mt-2 text-[13px] uppercase tracking-wide text-ink-muted">
+              {product.subtitle}
+            </p>
+          ) : null}
+
+          {product.rating ? (
+            <span className="mt-2 flex items-center gap-1.5">
+              <Stars rating={product.rating.average} size="sm" />
+              <span className="text-xs text-ink-muted">({product.rating.count})</span>
+            </span>
+          ) : null}
+
+          <div className="mt-auto pt-5">
+            {/* Solo se anuncia el retiro si de verdad hay algo que retirar. */}
+            {product.pickup && !soldOut ? (
+              <span className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-ink-soft">
+                <StoreIcon className="h-3.5 w-3.5 shrink-0 text-brand" />
+                Retiro disponible
+              </span>
+            ) : null}
+
+            <div className="flex items-baseline gap-2.5">
+              {hasDiscount ? (
+                <span className="text-sm text-ink-muted line-through">
+                  {formatMoney(product.compareAtPrice!)}
+                </span>
+              ) : null}
+              <span
+                className={`font-display text-lg font-semibold ${hasDiscount ? 'text-brand' : 'text-ink'}`}
+              >
+                {formatMoney(product.price)}
+              </span>
+            </div>
+          </div>
         </div>
       </Link>
-
-      <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <h3 className="text-lg leading-none transition-colors group-hover:text-mute">
-          <Link href={`/producto/${product.slug}`}>{product.name}</Link>
-        </h3>
-        {product.subtitle && (
-          <p className="mt-2 line-clamp-1 text-[13px] tracking-wide text-mute uppercase">
-            {product.subtitle}
-          </p>
-        )}
-
-        <div className="mt-auto pt-5">
-          <div className="flex items-baseline gap-2.5">
-            {product.compareAtPrice !== null && product.compareAtPrice > product.price && (
-              <span className="tnum text-sm text-mute line-through">
-                {formatCLP(product.compareAtPrice)}
-              </span>
-            )}
-            <span className="tnum font-display text-lg font-semibold">
-              {formatCLP(product.price)}
-            </span>
-          </div>
-
-          <button
-            disabled={soldOut}
-            onClick={() =>
-              add({
-                productId: product.id,
-                slug: product.slug,
-                name: product.name,
-                sku: product.sku,
-                price: product.price,
-                image: product.image,
-                maxStock: product.stock,
-              })
-            }
-            className="btn btn-outline btn-sm mt-4 w-full"
-          >
-            {soldOut ? "Sin stock" : "Agregar"}
-          </button>
-        </div>
-      </div>
     </article>
   );
 }

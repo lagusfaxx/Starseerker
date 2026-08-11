@@ -1,18 +1,20 @@
-"use client";
+'use client';
 
-import Image from "next/image";
-import { useState } from "react";
-import { isVideoUrl } from "@/lib/media";
+import { useState } from 'react';
+import { MediaImage } from './media-image';
 
-export type GalleryImage = { url: string; alt: string | null };
-
-export function ProductGallery({ images, name }: { images: GalleryImage[]; name: string }) {
+export function ProductGallery({
+  images,
+  productName,
+}: {
+  images: { url: string; alt: string }[];
+  productName: string;
+}) {
   const [active, setActive] = useState(0);
-  const current = images[active];
 
   if (images.length === 0) {
     return (
-      <div className="grid aspect-square place-items-center bg-ink-soft font-display text-xs tracking-[0.2em] text-mute uppercase">
+      <div className="flex aspect-square items-center justify-center bg-sand font-display uppercase tracking-widest text-ink-muted">
         Sin imagen
       </div>
     );
@@ -20,55 +22,38 @@ export function ProductGallery({ images, name }: { images: GalleryImage[]; name:
 
   return (
     <div>
-      <div className="relative aspect-square overflow-hidden bg-ink-soft">
-        {isVideoUrl(current.url) ? (
-          <video
-            src={current.url}
-            className="h-full w-full object-contain"
-            controls
-            playsInline
-            preload="metadata"
-          />
-        ) : (
-          <Image
-            src={current.url}
-            alt={current.alt ?? name}
-            fill
-            priority
-            sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-contain"
-          />
-        )}
+      <div className="aspect-square overflow-hidden bg-sand">
+        <MediaImage
+          src={images[active]!.url}
+          alt={images[active]!.alt || productName}
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          className="h-full w-full object-contain"
+        />
       </div>
 
-      {images.length > 1 && (
-        <div className="no-scrollbar mt-4 flex gap-3 overflow-x-auto">
+      {images.length > 1 ? (
+        <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar">
           {images.map((image, index) => (
             <button
               key={image.url + index}
               type="button"
               onClick={() => setActive(index)}
-              aria-label={`Ver imagen ${index + 1} de ${images.length}`}
+              aria-label={`Ver imagen ${index + 1} de ${productName}`}
               aria-current={index === active}
-              className={`relative h-20 w-20 shrink-0 border-2 bg-ink-soft transition-colors ${
-                index === active ? "border-bone" : "border-transparent hover:border-ink-line"
+              className={`h-20 w-20 shrink-0 border-2 bg-sand transition-colors ${
+                index === active ? 'border-ink' : 'border-transparent hover:border-sand-dark'
               }`}
             >
-              {isVideoUrl(image.url) ? (
-                <video
-                  src={image.url}
-                  className="h-full w-full object-contain"
-                  muted
-                  playsInline
-                  preload="metadata"
-                />
-              ) : (
-                <Image src={image.url} alt="" fill sizes="120px" className="object-contain" />
-              )}
+              <MediaImage
+                src={image.url}
+                alt=""
+                sizes="120px"
+                className="h-full w-full object-contain"
+              />
             </button>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
