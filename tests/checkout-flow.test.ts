@@ -2013,7 +2013,7 @@ async function testVideoUpload() {
  * No es un video reproducible: solo el arbol de cajas que hay que recorrer
  * para llegar al codec, que es lo unico que se esta probando.
  */
-function mp4Falso(codecs: string[]): Buffer {
+function mp4Falso(codecs: string[], indiceAlFinal = false): Buffer {
   function caja(nombre: string, dentro: Buffer): Buffer {
     const cabecera = Buffer.alloc(8);
     cabecera.writeUInt32BE(8 + dentro.length, 0);
@@ -2029,7 +2029,15 @@ function mp4Falso(codecs: string[]): Buffer {
     return caja('trak', caja('mdia', caja('minf', caja('stbl', stsd))));
   });
 
-  return Buffer.concat([caja('ftyp', Buffer.from('isom')), caja('moov', Buffer.concat(traks))]);
+  const ftyp = caja('ftyp', Buffer.from('isom'));
+  const moov = caja('moov', Buffer.concat(traks));
+  const mdat = caja('mdat', Buffer.alloc(32));
+
+  // El orden es justo lo que decide si el navegador puede empezar a reproducir
+  // enseguida o tiene que ir a buscar el indice al final.
+  return indiceAlFinal
+    ? Buffer.concat([ftyp, mdat, moov])
+    : Buffer.concat([ftyp, moov, mdat]);
 }
 
 async function testVideoCodecs() {
@@ -2075,7 +2083,37 @@ async function testVideoCodecs() {
   );
   check('si guarda uno en H.264', !('error' in buena));
   if (!('error' in buena)) {
+    check('y sin avisos si esta bien armado', buena.warning === undefined, buena.warning);
     await prisma.mediaAsset.delete({ where: { id: buena.id } });
+  }
+
+  // El indice al final no impide reproducir, pero retrasa el arranque: se
+  // acepta el archivo y se avisa.
+  const { mp4IndexAtEnd, COMFORTABLE_VIDEO_BYTES } = await import('../src/lib/media');
+  check('ve el indice al principio', !mp4IndexAtEnd(mp4Falso(['avc1'])));
+  check('y lo ve cuando esta al final', mp4IndexAtEnd(mp4Falso(['avc1'], true)));
+  check('no se confunde con un archivo cualquiera', !mp4IndexAtEnd(Buffer.alloc(64)));
+
+  const lento = await storeVideo(
+    new File([mp4Falso(['avc1'], true)], 'sin-faststart.mp4', { type: 'video/mp4' }),
+  );
+  check('acepta un MP4 con el indice al final', !('error' in lento));
+  if (!('error' in lento)) {
+    check('pero avisa de que va a tardar en arrancar', lento.warning?.includes('indice') ?? false, lento.warning);
+    await prisma.mediaAsset.delete({ where: { id: lento.id } });
+  }
+
+  // Y el peso, que es lo que de verdad hace lenta la portada: no se recomprime
+  // nada, asi que cada visitante se baja el archivo entero.
+  const relleno = Buffer.concat([
+    mp4Falso(['avc1']),
+    Buffer.alloc(COMFORTABLE_VIDEO_BYTES + 1024),
+  ]);
+  const pesado = await storeVideo(new File([relleno], 'pesado.mp4', { type: 'video/mp4' }));
+  check('acepta un video pesado', !('error' in pesado));
+  if (!('error' in pesado)) {
+    check('pero avisa del peso', pesado.warning?.includes('MB') ?? false, pesado.warning);
+    await prisma.mediaAsset.delete({ where: { id: pesado.id } });
   }
 }
 

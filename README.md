@@ -103,6 +103,25 @@ archivo completo: sin eso, un fondo de 25 MB arrastra el archivo entero en cada
 una de la docena larga de peticiones que hace un reproductor, y lo que se ve es
 que el video no carga.
 
+Para que ese corte sirva de algo, la columna se guarda **sin comprimir**
+(`STORAGE EXTERNAL`). Es el detalle que hace la diferencia: por defecto
+Postgres comprime los valores grandes, y de un valor comprimido no se puede
+sacar un pedazo sin descomprimir todo lo que hay antes. Comprimir un MP4 no
+ahorra nada —ya viene comprimido— y en cambio se paga en cada peticion. Medido
+sobre un video de 25 MB, leer un tramo de 2 MB pasa de **145 ms a 24 ms**, y
+deja de importar de que parte del archivo sea.
+
+**Pero lo que de verdad manda es cuanto pesa el archivo.** La tienda no
+recodifica el video: el que subes es exactamente el que descarga cada
+visitante, entero. Ningun ajuste del servidor cambia eso. Para un fondo de
+portada conviene quedarse por debajo de 8 MB —unos 10 a 15 segundos en
+1080p— y el panel avisa al subir si te pasas.
+
+**Faststart.** Si el indice del MP4 quedo al final del archivo, el navegador
+tiene que ir a buscarlo antes de poder empezar, y el video tarda en arrancar.
+El panel lo detecta al subir y avisa; se arregla exportando con la opcion
+"optimizar para web" o "faststart".
+
 **Codec.** Un MP4 tiene que estar en **H.264**. Los MP4 en H.265 (HEVC) —lo que
 graba un iPhone en modo "alta eficiencia" y lo que exportan varios editores por
 defecto— se rechazan al subir con un aviso, porque suben bien, se guardan bien

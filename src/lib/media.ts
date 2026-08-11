@@ -48,6 +48,15 @@ export const ALLOWED_IMAGE_TYPES = [
 export const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
 
 /**
+ * A partir de aqui se avisa, aunque se acepte.
+ *
+ * No es un limite tecnico: es el punto en que el peso del archivo empieza a
+ * ser lo que hace lento el banner. La tienda no recodifica el video, asi que
+ * cada visitante se baja exactamente lo que se subio.
+ */
+export const COMFORTABLE_VIDEO_BYTES = 8 * 1024 * 1024;
+
+/**
  * Solo MP4 y WEBM: son los dos que cualquier navegador reproduce sin plugins
  * ni conversion. Un MOV o un AVI habria que recodificarlos en el servidor.
  */
@@ -130,6 +139,35 @@ export function mp4Codecs(bytes: Buffer): string[] {
 }
 
 /**
+ * Dice si un MP4 tiene su indice al final del archivo.
+ *
+ * Un MP4 lleva el contenido en `mdat` y el indice —que dice donde empieza cada
+ * fotograma— en `moov`. Si el indice va al final, el navegador no puede
+ * empezar a reproducir hasta tenerlo, asi que primero se descarga el archivo
+ * casi entero o, con suerte, hace un viaje extra a buscar el final antes de
+ * empezar. Cualquier editor lo arregla con la opcion que suele llamarse
+ * "faststart" o "optimizar para web", que mueve el indice al principio.
+ */
+export function mp4IndexAtEnd(bytes: Buffer): boolean {
+  let offset = 0;
+  let vistoMdat = false;
+
+  while (offset + 8 <= bytes.length) {
+    const size = bytes.readUInt32BE(offset);
+    const name = bytes.toString('latin1', offset + 4, offset + 8);
+    const length = size === 0 ? bytes.length - offset : size;
+    if (length < 8) return false;
+
+    if (name === 'moov') return vistoMdat;
+    if (name === 'mdat') vistoMdat = true;
+
+    offset += length;
+  }
+
+  return false;
+}
+
+/**
  * Explica por que un MP4 no se va a poder ver, si es el caso.
  *
  * Ante la duda acepta: si no se reconoce ninguna pista de video —un archivo
@@ -151,7 +189,7 @@ export function unplayableMp4Reason(bytes: Buffer): string | null {
 }
 
 export type MediaError = { error: string };
-export type MediaResult = { url: string; id: string };
+export type MediaResult = { url: string; id: string; warning?: string };
 
 /** Un SVG puede traer scripts; se rechaza en lugar de guardarlo. */
 function svgIsSafe(buffer: Buffer): boolean {
@@ -231,9 +269,30 @@ export async function storeVideo(file: File): Promise<MediaResult | MediaError> 
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
+  const avisos: string[] = [];
+
   if (file.type === 'video/mp4') {
     const problema = unplayableMp4Reason(bytes);
     if (problema) return { error: problema };
+
+    if (mp4IndexAtEnd(bytes)) {
+      avisos.push(
+        'El indice del video esta al final del archivo, asi que el navegador ' +
+          'tiene que ir a buscarlo antes de poder empezar. Al exportarlo, marca ' +
+          '"optimizar para web" (faststart) y arranca antes.',
+      );
+    }
+  }
+
+  // El archivo se sirve tal cual se subio: aqui no se recodifica nada, asi que
+  // lo que pese es lo que se baja cada visitante. Con un fondo de portada eso
+  // se nota, y mas en un telefono con datos moviles.
+  if (bytes.length > COMFORTABLE_VIDEO_BYTES) {
+    avisos.push(
+      `El video pesa ${(bytes.length / 1024 / 1024).toFixed(1)} MB y se descarga ` +
+        'entero en cada visita, porque no se recomprime. Para un fondo conviene ' +
+        'dejarlo por debajo de 8 MB: recortalo a 10 o 15 segundos y exportalo a 1080p.',
+    );
   }
 
   const asset = await prisma.mediaAsset.create({
@@ -249,7 +308,11 @@ export async function storeVideo(file: File): Promise<MediaResult | MediaError> 
 
   // A diferencia de una imagen no se prepara ninguna version: un video no se
   // reencodea aqui.
-  return { id: asset.id, url: `/api/media/${asset.id}` };
+  return {
+    id: asset.id,
+    url: `/api/media/${asset.id}`,
+    warning: avisos.length > 0 ? avisos.join(' ') : undefined,
+  };
 }
 
 export async function getImage(id: string) {

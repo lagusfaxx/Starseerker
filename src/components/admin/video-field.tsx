@@ -34,6 +34,9 @@ export function VideoField({
   const [url, setUrlState] = useState(defaultValue);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Un aviso no es un error: el video se subio y funciona, pero conviene saber
+  // que va a ir lento o a tardar en arrancar.
+  const [notice, setNotice] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function setUrl(next: string) {
@@ -44,6 +47,7 @@ export function VideoField({
   async function upload(file: File) {
     setUploading(true);
     setMessage(null);
+    setNotice(null);
 
     try {
       const body = new FormData();
@@ -58,6 +62,7 @@ export function VideoField({
         return;
       }
       setUrl(data.url);
+      if (data.warning) setNotice(data.warning);
     } catch {
       // Un video tarda, y una subida cortada a medio camino se ve igual que un
       // fallo de red: conviene decir las dos cosas.
@@ -138,9 +143,14 @@ export function VideoField({
           Subiendo el video. Puede tardar un poco; no cierres esta pagina.
         </span>
       ) : null}
+      {notice ? (
+        <span className="mt-1.5 block border-l-2 border-amber-400 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+          {notice}
+        </span>
+      ) : null}
       {message ? <span className="error-text">{message}</span> : null}
       {error ? <span className="error-text">{error}</span> : null}
-      {!message && !error && !uploading && hint ? (
+      {!message && !error && !uploading && !notice && hint ? (
         <span className="mt-1.5 block text-xs text-ink-muted">{hint}</span>
       ) : null}
     </div>
