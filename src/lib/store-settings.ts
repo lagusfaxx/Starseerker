@@ -142,13 +142,26 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     secondaryLogoAlt: map.get(SECONDARY_LOGO_ALT_SETTING_KEY) || '',
     faviconUrl: map.get(FAVICON_SETTING_KEY) || null,
     paymentLogoUrl: map.get(PAYMENT_LOGO_SETTING_KEY) || null,
-    marquee: rawMarquee
-      ? rawMarquee
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .slice(0, 8)
-      : DEFAULT_MARQUEE,
+    /*
+     * Ojo con la diferencia entre "no hay nada guardado" y "se guardo vacio".
+     *
+     * Son dos cosas distintas y antes se trataban igual: una tienda recien
+     * instalada no tiene la clave y le corresponden las frases de ejemplo,
+     * pero si el propietario borra el campo y guarda, la clave existe con el
+     * texto vacio y lo que esta pidiendo es que no haya cinta. Comparar contra
+     * `undefined` en vez de mirar si el texto es vacio distingue los dos
+     * casos; con la version anterior el campo se dejaba en blanco, se
+     * guardaba, y al volver reaparecian las cuatro frases de ejemplo sin
+     * manera de quitarlas.
+     */
+    marquee:
+      rawMarquee === undefined
+        ? DEFAULT_MARQUEE
+        : rawMarquee
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 8),
   };
 }
 

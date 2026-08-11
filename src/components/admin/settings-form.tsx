@@ -219,7 +219,8 @@ export function SettingsForm({
           placeholder={'Envio a todo Chile con Blue Express\nPago seguro con Mercado Pago'}
         />
         <p className="mt-1.5 text-xs text-ink-muted">
-          Una frase por linea, hasta ocho. Son los mensajes que giran en la portada.
+          Una frase por linea, hasta ocho. Son los mensajes que giran en la portada. Dejalo
+          vacio y la cinta no aparece.
         </p>
       </div>
 

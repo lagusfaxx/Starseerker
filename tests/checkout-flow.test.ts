@@ -2167,6 +2167,48 @@ async function testVideoEmbeds() {
   check('un javascript: no da video', toBannerVideo('javascript:alert(1)') === null);
 }
 
+async function testMarquee() {
+  console.log('\nCinta desplazante de la portada');
+  const { getStoreSettings, DEFAULT_MARQUEE } = await import('../src/lib/store-settings');
+
+  const original = await prisma.setting.findUnique({ where: { key: 'store.marquee' } });
+
+  async function guardar(valor: string | null) {
+    if (valor === null) {
+      await prisma.setting.deleteMany({ where: { key: 'store.marquee' } });
+    } else {
+      await prisma.setting.upsert({
+        where: { key: 'store.marquee' },
+        update: { value: valor },
+        create: { key: 'store.marquee', value: valor },
+      });
+    }
+    return (await getStoreSettings()).marquee;
+  }
+
+  // Tienda recien instalada: no hay nada guardado y se muestran las de ejemplo.
+  check(
+    'sin configurar usa las frases de ejemplo',
+    JSON.stringify(await guardar(null)) === JSON.stringify(DEFAULT_MARQUEE),
+  );
+
+  const propias = await guardar('Distribuidor oficial\nDespacho a todo Chile');
+  check('respeta las frases propias', JSON.stringify(propias) === JSON.stringify([
+    'Distribuidor oficial',
+    'Despacho a todo Chile',
+  ]));
+
+  // Lo que fallaba: vaciar el campo y guardar hacia reaparecer las de ejemplo,
+  // sin forma de quitar la cinta.
+  check('vaciarlo deja la cinta sin frases', (await guardar('')).length === 0);
+  check('y un campo con solo saltos de linea tambien', (await guardar('\n\n  \n')).length === 0);
+
+  const muchas = await guardar(Array.from({ length: 12 }, (_, i) => `Frase ${i}`).join('\n'));
+  check('no acepta mas de ocho', muchas.length === 8);
+
+  await guardar(original ? original.value : null);
+}
+
 async function main() {
   console.log('Ejecutando pruebas de la tienda STARSEEKER...');
 
@@ -2193,6 +2235,7 @@ async function main() {
   await testVideoUpload();
   await testVideoCodecs();
   await testVideoEmbeds();
+  await testMarquee();
 
   console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
   await prisma.$disconnect();
