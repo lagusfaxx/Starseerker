@@ -72,9 +72,7 @@ function Hero({ block }: { block: HeroBlock }) {
       {(block.bandText || block.ctaLabel) && (
         <div className="py-10 text-center">
           {block.bandText && (
-            <h1 className="display container-page text-xl text-balance sm:text-2xl lg:text-[1.75rem]">
-              {block.bandText}
-            </h1>
+            <h1 className="container-page section-title text-2xl sm:text-3xl">{block.bandText}</h1>
           )}
           {block.ctaLabel && (
             <Link href={block.ctaHref || "/productos"} className="btn btn-primary mt-7">
@@ -106,7 +104,8 @@ async function Products({ block }: { block: ProductsBlock }) {
   if (products.length === 0) return null;
 
   return (
-    <section className="container-page pb-20">
+    <section className="border-t border-ink-line">
+      <div className="container-page py-16">
       <SectionTitle
         title={block.title}
         href={block.linkLabel ? block.linkHref || "/productos" : undefined}
@@ -121,6 +120,7 @@ async function Products({ block }: { block: ProductsBlock }) {
       ) : (
         <ProductGrid products={products} />
       )}
+      </div>
     </section>
   );
 }
@@ -130,18 +130,19 @@ async function Categories({ block }: { block: CategoriesBlock }) {
   if (categories.length === 0) return null;
 
   return (
-    <section className="container-page pb-24">
+    <section className="border-t border-ink-line">
+      <div className="container-page py-16">
       <SectionTitle
         title={block.title}
         href={block.linkLabel ? block.linkHref || "/productos" : undefined}
         linkLabel={block.linkLabel || undefined}
       />
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-px bg-ink-line sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => (
           <Link
             key={category.id}
             href={`/coleccion/${category.slug}`}
-            className="group relative flex aspect-[4/3] items-end justify-center overflow-hidden rounded-xl bg-ink-soft"
+            className="group relative flex aspect-[4/3] items-end justify-center overflow-hidden bg-ink"
           >
             {category.image && (
               <div className="absolute inset-0 opacity-55 transition duration-700 group-hover:scale-105 group-hover:opacity-70">
@@ -150,16 +151,17 @@ async function Categories({ block }: { block: CategoriesBlock }) {
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
             <div className="relative p-7 text-center">
-              <h3 className="text-lg font-semibold">{category.name}</h3>
+              <h3 className="text-2xl">{category.name}</h3>
               {category.description && (
                 <p className="mx-auto mt-1 max-w-xs text-xs text-bone/65">{category.description}</p>
               )}
-              <span className="mt-2 inline-block text-[11px] tracking-[0.2em] text-bone/70 uppercase">
+              <span className="mt-2 inline-block font-display text-[11px] tracking-[0.2em] text-bone/70 uppercase">
                 Ver productos
               </span>
             </div>
           </Link>
         ))}
+      </div>
       </div>
     </section>
   );
@@ -170,24 +172,23 @@ function Gallery({ block }: { block: GalleryBlock }) {
   if (items.length === 0) return null;
 
   const tile = (url: string, index: number) => (
-    <div
-      key={`${url}-${index}`}
-      className="relative aspect-square overflow-hidden rounded-xl bg-ink-soft"
-    >
+    <div key={`${url}-${index}`} className="relative aspect-square overflow-hidden bg-ink-soft">
       <Media url={url} sizes="(max-width: 640px) 50vw, 25vw" />
     </div>
   );
 
   return (
-    <section className="container-page pb-24">
+    <section className="border-t border-ink-line">
+      <div className="container-page py-16">
       {block.title && <SectionTitle title={block.title} />}
       {block.layout === "carousel" ? (
         <Carousel itemClassName="w-[70%] sm:w-[40%] lg:w-[24%]">
           {items.map(tile)}
         </Carousel>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{items.map(tile)}</div>
+        <div className="grid grid-cols-2 gap-px bg-ink-line lg:grid-cols-4">{items.map(tile)}</div>
       )}
+      </div>
     </section>
   );
 }
@@ -196,14 +197,10 @@ function MediaText({ block }: { block: MediaTextBlock }) {
   if (!block.mediaUrl && !block.title && !block.body) return null;
 
   return (
-    <section className="container-page pb-24">
-      <div
-        className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-16 ${
-          block.reversed ? "" : ""
-        }`}
-      >
+    <section className="border-t border-ink-line">
+      <div className="container-page grid items-center gap-10 py-16 lg:grid-cols-2 lg:gap-16">
         <div
-          className={`relative aspect-[4/3] overflow-hidden rounded-xl bg-ink-soft ${
+          className={`relative aspect-[4/3] overflow-hidden bg-ink-soft ${
             block.reversed ? "lg:order-2" : ""
           }`}
         >
@@ -212,9 +209,9 @@ function MediaText({ block }: { block: MediaTextBlock }) {
 
         <div className={block.reversed ? "lg:order-1" : ""}>
           {block.eyebrow && <p className="eyebrow">{block.eyebrow}</p>}
-          {block.title && <h2 className="display mt-3 text-2xl sm:text-3xl">{block.title}</h2>}
+          {block.title && <h2 className="section-title mt-3">{block.title}</h2>}
           {block.body && (
-            <p className="mt-5 text-sm leading-relaxed whitespace-pre-line text-mute">
+            <p className="mt-5 text-[15px] leading-relaxed whitespace-pre-line text-bone-soft">
               {block.body}
             </p>
           )}
@@ -235,13 +232,9 @@ function Banner({ block }: { block: BannerBlock }) {
   return (
     <section className="border-t border-ink-line">
       <div className="container-page py-16 text-center">
-        {block.title && (
-          <h2 className="display mx-auto max-w-2xl text-2xl text-balance sm:text-3xl">
-            {block.title}
-          </h2>
-        )}
+        {block.title && <h2 className="section-title mx-auto max-w-3xl">{block.title}</h2>}
         {block.body && (
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed whitespace-pre-line text-mute">
+          <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed whitespace-pre-line text-bone-soft">
             {block.body}
           </p>
         )}

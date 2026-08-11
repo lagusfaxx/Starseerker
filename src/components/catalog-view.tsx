@@ -63,14 +63,17 @@ export async function CatalogView({
   );
 
   return (
-    <div className="container-page pb-20">
-      <header className="pt-14 pb-4 text-center">
-        <h1 className="display text-3xl sm:text-4xl">{title}</h1>
-        <span className="rule-accent" aria-hidden="true" />
-        {description && (
-          <p className="mx-auto mt-6 max-w-xl text-sm leading-relaxed text-mute">{description}</p>
-        )}
+    <div className="pb-20">
+      <header className="border-b border-ink-line">
+        <div className="container-page py-12">
+          <h1 className="section-title text-4xl sm:text-5xl">{title}</h1>
+          {description && (
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-mute">{description}</p>
+          )}
+        </div>
       </header>
+
+      <div className="container-page">
 
       <Suspense fallback={<div className="h-20" />}>
         <CatalogBar total={total} />
@@ -89,10 +92,10 @@ export async function CatalogView({
                 key={number}
                 href={query ? `${basePath}?${query}` : basePath}
                 aria-current={number === page ? "page" : undefined}
-                className={`tnum grid h-9 w-9 place-items-center rounded-full text-xs transition ${
+                className={`tnum grid h-10 w-10 place-items-center border text-xs transition ${
                   number === page
-                    ? "bg-bone font-semibold text-black"
-                    : "bg-ink-soft text-mute hover:text-bone"
+                    ? "border-bone bg-bone font-semibold text-ink"
+                    : "border-ink-line text-mute hover:border-bone hover:text-bone"
                 }`}
               >
                 {number}
@@ -101,6 +104,7 @@ export async function CatalogView({
           })}
         </nav>
       )}
+      </div>
     </div>
   );
 }

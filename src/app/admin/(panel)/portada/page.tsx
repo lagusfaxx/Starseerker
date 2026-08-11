@@ -31,18 +31,23 @@ export default async function AdminHomePage() {
     <div className="max-w-4xl">
       <h1 className="text-2xl font-bold">Portada</h1>
       <p className="mt-2 text-sm text-mute">
-        La página de inicio se arma con bloques. Puedes reordenarlos, ocultarlos y editar todos sus
-        textos, imágenes y videos. En cualquier campo de imagen puedes pegar la URL de una foto o de
-        un video <code className="text-bone">.mp4</code>.
+        Abre un bloque para editarlo. En cualquier campo de imagen puedes pegar la URL de una foto o
+        de un video <code className="text-bone">.mp4</code>. Los bloques vacíos no se muestran en la
+        tienda.
       </p>
 
       <ol className="mt-8 space-y-5">
         {blocks.map((block, index) => (
-          <li key={block.id} className="panel p-5">
-            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-line pb-4">
-              <div className="flex items-center gap-3">
+          <li key={block.id} className="panel">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+              <div className="flex min-w-0 items-center gap-3">
                 <span className="tnum text-xs text-mute">{String(index + 1).padStart(2, "0")}</span>
-                <h2 className="text-sm font-semibold">{BLOCK_LABELS[block.type]}</h2>
+                <span className="truncate text-sm font-semibold">
+                  {BLOCK_LABELS[block.type]}
+                  {summarize(block) && (
+                    <span className="ml-2 font-normal text-mute">{summarize(block)}</span>
+                  )}
+                </span>
                 {!block.active && (
                   <span className="border border-ink-line px-2 py-0.5 text-[10px] text-mute">
                     Oculto
@@ -50,7 +55,7 @@ export default async function AdminHomePage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <MiniButton action={moveHomeBlock} id={block.id} extra={{ direction: "up" }}>
                   Subir
                 </MiniButton>
@@ -64,31 +69,58 @@ export default async function AdminHomePage() {
                   Eliminar
                 </MiniButton>
               </div>
-            </header>
+            </div>
 
-            <form action={saveHomeBlock} className="mt-5 space-y-4">
-              <input type="hidden" name="id" value={block.id} />
-              <BlockFields block={block} categories={categories} />
-              <button className="btn btn-light btn-sm">Guardar bloque</button>
-            </form>
+            <details className="group border-t border-ink-line">
+              <summary className="cursor-pointer list-none px-5 py-3 text-xs text-mute hover:text-bone">
+                <span className="group-open:hidden">Editar</span>
+                <span className="hidden group-open:inline">Cerrar</span>
+              </summary>
+              <form action={saveHomeBlock} className="space-y-4 border-t border-ink-line p-5">
+                <input type="hidden" name="id" value={block.id} />
+                <BlockFields block={block} categories={categories} />
+                <button className="btn btn-light btn-sm">Guardar bloque</button>
+              </form>
+            </details>
           </li>
         ))}
       </ol>
 
-      <section className="panel mt-8 p-5">
-        <h2 className="text-sm font-semibold">Agregar bloque</h2>
-        <p className="mt-1 text-xs text-mute">Se agrega al final; después puedes subirlo.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {TYPES.map((type) => (
-            <form key={type} action={addHomeBlock}>
-              <input type="hidden" name="type" value={type} />
-              <button className="btn btn-outline btn-sm">{BLOCK_LABELS[type]}</button>
-            </form>
-          ))}
+      <form action={addHomeBlock} className="panel mt-6 flex flex-wrap items-end gap-3 p-5">
+        <div className="min-w-56 flex-1">
+          <label className="field-label">Agregar bloque al final</label>
+          <select name="type" className="field" defaultValue="products">
+            {TYPES.map((type) => (
+              <option key={type} value={type}>
+                {BLOCK_LABELS[type]}
+              </option>
+            ))}
+          </select>
         </div>
-      </section>
+        <button className="btn btn-outline btn-sm">Agregar</button>
+      </form>
     </div>
   );
+}
+
+/** Una línea con lo más identificable del bloque, para reconocerlo cerrado. */
+function summarize(block: HomeBlock): string {
+  switch (block.type) {
+    case "hero":
+      return block.overlayText || block.bandText || "";
+    case "products":
+      return block.title;
+    case "categories":
+      return block.title;
+    case "gallery":
+      return `${block.title || "Sin título"} · ${block.items.length} archivos`;
+    case "mediaText":
+      return block.title || "";
+    case "banner":
+      return block.title || "";
+    default:
+      return "";
+  }
 }
 
 function MiniButton({

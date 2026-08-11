@@ -1,14 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins } from "next/font/google";
+import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
 import { siteUrl } from "@/lib/site";
 
-const poppins = Poppins({
+/** Condensada para titulares, como en la referencia. */
+const oswald = Oswald({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-display",
 });
+
+/** Inter para el texto corrido. */
+const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
@@ -32,7 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es-CL" className={`${poppins.variable} h-full antialiased`}>
+    <html lang="es-CL" className={`${oswald.variable} ${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );

@@ -4,12 +4,11 @@ import { notFound } from "next/navigation";
 import { ProductGallery } from "@/components/product-gallery";
 import { AddToCart } from "@/components/add-to-cart";
 import { ProductGrid } from "@/components/product-grid";
-import { SectionTitle } from "@/components/section-title";
 import { ShippingEstimator } from "@/components/shipping-estimator";
 import { getProductBySlug, safeListProducts } from "@/lib/queries";
 import { discountPercent, formatCLP } from "@/lib/format";
 import { getSettings } from "@/lib/settings";
-import { CheckIcon } from "@/components/icons";
+import { BoxIcon, CardIcon, CheckIcon, TruckIcon } from "@/components/icons";
 
 export const revalidate = 60;
 
@@ -75,6 +74,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const off = discountPercent(product.price, product.compareAtPrice);
   const image = product.images[0]?.url ?? null;
 
+  const [firstParagraph, ...restParagraphs] = product.description.split("\n\n");
+  const restOfDescription = restParagraphs.join("\n\n").trim();
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -100,121 +102,168 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="container-page pt-10 pb-20">
-        <nav aria-label="Ruta de navegación" className="text-xs text-mute">
-          <Link href="/" className="link-quiet">
+      {/* Migas de pan */}
+      <nav aria-label="Migas de pan" className="border-b border-ink-line">
+        <div className="container-page flex flex-wrap items-center gap-2 py-4 font-display text-[11px] tracking-[0.18em] text-mute uppercase">
+          <Link href="/" className="hover:text-bone">
             Inicio
           </Link>
-          <span className="mx-2">/</span>
-          <Link href="/productos" className="link-quiet">
-            Colección
+          <span aria-hidden="true">/</span>
+          <Link href="/productos" className="hover:text-bone">
+            Productos
           </Link>
-          <span className="mx-2">/</span>
-          <span className="text-bone/70">{product.name}</span>
-        </nav>
+          {product.category && (
+            <>
+              <span aria-hidden="true">/</span>
+              <Link href={`/coleccion/${product.category.slug}`} className="hover:text-bone">
+                {product.category.name}
+              </Link>
+            </>
+          )}
+          <span aria-hidden="true">/</span>
+          <span className="text-bone">{product.name}</span>
+        </div>
+      </nav>
 
-        <div className="mt-8 grid gap-12 lg:grid-cols-2 lg:gap-16">
-          <ProductGallery images={product.images} name={product.name} />
+      {/* Galería + compra */}
+      <div className="container-page grid gap-12 py-12 lg:grid-cols-2 lg:gap-16">
+        <ProductGallery images={product.images} name={product.name} />
 
-          <div className="lg:pt-6">
-            {product.subtitle && <p className="eyebrow">{product.subtitle}</p>}
-            <h1 className="display mt-3 text-[1.75rem] lg:text-[2.25rem]">{product.name}</h1>
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <p className="eyebrow text-bone">STARSEEKER</p>
 
-            <div className="mt-5 flex flex-wrap items-baseline gap-3">
-              <span className="tnum text-[1.75rem] font-semibold">{formatCLP(product.price)}</span>
-              {product.compareAtPrice !== null && product.compareAtPrice > product.price && (
-                <>
-                  <span className="tnum text-sm text-mute line-through">
-                    {formatCLP(product.compareAtPrice)}
-                  </span>
-                  <span className="rounded-full bg-bone px-2.5 py-1 text-[11px] font-semibold text-black">
-                    -{off}%
-                  </span>
-                </>
-              )}
-            </div>
-            <p className="mt-2 text-xs text-mute">
-              IVA incluido · Cuotas con Mercado Pago ·{" "}
-              {product.stock > 0 ? (
-                product.stock <= 5 ? (
-                  <span className="text-accent">Últimas {product.stock} unidades</span>
-                ) : (
-                  "En stock"
-                )
-              ) : (
-                <span className="text-red-400">Sin stock</span>
-              )}
-            </p>
+          <h1 className="mt-2 text-4xl lg:text-5xl">{product.name}</h1>
 
-            {highlights.length > 0 && (
-              <ul className="mt-7 space-y-3 text-sm text-bone/85">
-                {highlights.map((item) => (
-                  <li key={item} className="flex gap-3">
-                    <CheckIcon size={17} className="mt-0.5 shrink-0 text-accent" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
+          {product.subtitle && (
+            <p className="mt-3 text-base tracking-wide text-mute uppercase">{product.subtitle}</p>
+          )}
+
+          <div className="mt-6 flex flex-wrap items-baseline gap-3">
+            {product.compareAtPrice !== null && product.compareAtPrice > product.price && (
+              <span className="tnum text-lg text-mute line-through">
+                {formatCLP(product.compareAtPrice)}
+              </span>
             )}
+            <span className="tnum font-display text-3xl font-semibold">
+              {formatCLP(product.price)}
+            </span>
+            {off !== null && <span className="badge bg-bone text-ink">-{off}%</span>}
+          </div>
 
-            <div className="mt-8">
-              <AddToCart
-                item={{
-                  productId: product.id,
-                  slug: product.slug,
-                  name: product.name,
-                  sku: product.sku,
-                  price: product.price,
-                  image,
-                  maxStock: product.stock,
-                }}
-              />
-            </div>
+          <p className="mt-2 text-xs text-mute">
+            IVA incluido · SKU {product.sku} ·{" "}
+            {product.stock > 0
+              ? product.stock <= 5
+                ? `Últimas ${product.stock} unidades`
+                : "En stock"
+              : "Sin stock"}
+          </p>
 
-            <p className="mt-5 text-xs text-mute">
-              Producto original · 10 días de retracto según la Ley del Consumidor · Despacho a
-              todo Chile
-            </p>
+          {product.description && (
+            <p className="mt-6 text-[15px] leading-relaxed text-bone-soft">{firstParagraph}</p>
+          )}
 
-            <div className="mt-7">
-              <ShippingEstimator subtotal={product.price} />
-            </div>
+          <div className="mt-8">
+            <AddToCart
+              item={{
+                productId: product.id,
+                slug: product.slug,
+                name: product.name,
+                sku: product.sku,
+                price: product.price,
+                image,
+                maxStock: product.stock,
+              }}
+            />
+          </div>
+
+          <ul className="mt-10 space-y-3 border-t border-ink-line pt-8">
+            <Perk icon={<TruckIcon size={20} />}>
+              {settings.freeShippingThreshold
+                ? `Despacho gratis en compras sobre ${formatCLP(settings.freeShippingThreshold)}`
+                : "El costo de despacho se calcula antes de pagar"}
+            </Perk>
+            <Perk icon={<CardIcon size={20} />}>
+              Pago con Mercado Pago: débito, crédito en cuotas y transferencia
+            </Perk>
+            <Perk icon={<BoxIcon size={20} />}>
+              Sigue tu pedido en línea desde el despacho hasta la entrega
+            </Perk>
+          </ul>
+
+          <div className="mt-8">
+            <ShippingEstimator subtotal={product.price} />
           </div>
         </div>
-
-        {/* Detalle */}
-        <div className="mx-auto mt-20 max-w-3xl">
-          {product.description && (
-            <section>
-              <h2 className="display text-xl">Sobre este producto</h2>
-              <div className="mt-5 space-y-4 text-sm leading-relaxed whitespace-pre-line text-bone/80">
-                {product.description}
-              </div>
-            </section>
-          )}
-
-          {specs.length > 0 && (
-            <section className="mt-14">
-              <h2 className="display text-xl">Especificaciones</h2>
-              <dl className="mt-5 divide-y divide-ink-line border-y border-ink-line text-sm">
-                {specs.map((spec) => (
-                  <div key={spec.label} className="flex justify-between gap-8 py-3">
-                    <dt className="text-mute">{spec.label}</dt>
-                    <dd className="text-right font-medium">{spec.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )}
-        </div>
-
-        {crossSell.length > 0 && (
-          <section>
-            <SectionTitle title="También te puede gustar" />
-            <ProductGrid products={crossSell} />
-          </section>
-        )}
       </div>
+
+      {/* Características y especificaciones */}
+      {(highlights.length > 0 || specs.length > 0) && (
+        <section className="border-t border-ink-line bg-ink-soft">
+          <div className="container-page grid gap-12 py-16 lg:grid-cols-2">
+            {highlights.length > 0 && (
+              <div>
+                <h2 className="section-title">Características</h2>
+                <ul className="mt-6 space-y-4">
+                  {highlights.map((item) => (
+                    <li key={item} className="flex gap-3 text-[15px] text-bone-soft">
+                      <CheckIcon size={20} className="mt-0.5 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {specs.length > 0 && (
+              <div>
+                <h2 className="section-title">Especificaciones</h2>
+                <dl className="mt-6 divide-y divide-ink-line border-y border-ink-line">
+                  {specs.map((spec) => (
+                    <div key={spec.label} className="flex justify-between gap-6 py-3.5">
+                      <dt className="font-display text-xs font-semibold tracking-[0.16em] text-mute uppercase">
+                        {spec.label}
+                      </dt>
+                      <dd className="text-right text-sm">{spec.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Resto de la descripción: en la caja de compra solo va el primer párrafo. */}
+      {restOfDescription && (
+        <section className="border-t border-ink-line">
+          <div className="container-page max-w-3xl py-16">
+            <h2 className="section-title">Sobre este producto</h2>
+            <div className="mt-6 space-y-4 text-[15px] leading-relaxed whitespace-pre-line text-bone-soft">
+              {restOfDescription}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Relacionados */}
+      {crossSell.length > 0 && (
+        <section className="border-t border-ink-line">
+          <div className="container-page py-12">
+            <h2 className="section-title">También te puede gustar</h2>
+          </div>
+          <ProductGrid products={crossSell} />
+        </section>
+      )}
     </>
+  );
+}
+
+function Perk({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-3 text-sm text-bone-soft">
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <span>{children}</span>
+    </li>
   );
 }

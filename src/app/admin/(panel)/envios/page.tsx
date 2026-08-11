@@ -197,7 +197,31 @@ export default async function AdminShippingPage() {
 
       <div className="mt-8 space-y-6">
         {zones.map((zone) => (
-          <section key={zone.id} className="panel p-5">
+          <section key={zone.id} className="panel">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold">{zone.name}</h2>
+                <p className="mt-0.5 text-xs text-mute">
+                  {zone.regionCodes.length}{" "}
+                  {zone.regionCodes.length === 1 ? "región" : "regiones"} ·{" "}
+                  {zone.rates.length} {zone.rates.length === 1 ? "tarifa" : "tarifas"}
+                  {!zone.active && " · inactiva"}
+                </p>
+              </div>
+              <p className="text-xs text-mute">
+                {zone.rates
+                  .filter((rate) => rate.active)
+                  .map((rate) => `${rate.name}: ${rate.price === 0 ? "gratis" : formatCLP(rate.price)}`)
+                  .join(" · ") || "Sin tarifas activas"}
+              </p>
+            </div>
+
+            <details className="group border-t border-ink-line">
+              <summary className="cursor-pointer list-none px-5 py-3 text-xs text-mute hover:text-bone">
+                <span className="group-open:hidden">Editar zona y tarifas</span>
+                <span className="hidden group-open:inline">Cerrar</span>
+              </summary>
+              <div className="border-t border-ink-line p-5">
             <form action={saveZone} className="space-y-4">
               <input type="hidden" name="id" value={zone.id} />
               <div className="grid gap-4 sm:grid-cols-[1.2fr_1.6fr_auto]">
@@ -245,25 +269,38 @@ export default async function AdminShippingPage() {
 
               <div className="mt-4 space-y-6">
                 {zone.rates.map((rate) => (
-                  <div key={rate.id} className="rounded-xs border border-ink-line p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3 text-xs">
+                  <details key={rate.id} className="group border border-ink-line">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs">
                       <span className="font-semibold">
                         {rate.name} · {rate.price === 0 ? "Gratis" : formatCLP(rate.price)}
                         {rate.freeOver ? ` · gratis sobre ${formatCLP(rate.freeOver)}` : ""}
+                        {!rate.active && " · inactiva"}
                       </span>
-                      <form action={deleteRate}>
+                      <span className="text-mute">
+                        <span className="group-open:hidden">Editar</span>
+                        <span className="hidden group-open:inline">Cerrar</span>
+                      </span>
+                    </summary>
+                    <div className="border-t border-ink-line p-4">
+                      <RateForm zoneId={zone.id} rate={rate} />
+                      <form action={deleteRate} className="mt-4">
                         <input type="hidden" name="id" value={rate.id} />
-                        <button className="text-red-400/80 hover:text-red-300">Eliminar</button>
+                        <button className="text-xs text-red-400/80 hover:text-red-300">
+                          Eliminar tarifa
+                        </button>
                       </form>
                     </div>
-                    <RateForm zoneId={zone.id} rate={rate} />
-                  </div>
+                  </details>
                 ))}
 
-                <div className="rounded-xs border border-dashed border-ink-line p-4">
-                  <p className="mb-3 text-xs font-semibold text-mute">Nueva tarifa</p>
-                  <RateForm zoneId={zone.id} />
-                </div>
+                <details className="group border border-dashed border-ink-line">
+                  <summary className="cursor-pointer list-none px-4 py-3 text-xs text-mute hover:text-bone">
+                    Agregar tarifa a esta zona
+                  </summary>
+                  <div className="border-t border-ink-line p-4">
+                    <RateForm zoneId={zone.id} />
+                  </div>
+                </details>
               </div>
             </div>
 
@@ -273,6 +310,8 @@ export default async function AdminShippingPage() {
                 Eliminar zona completa
               </button>
             </form>
+              </div>
+            </details>
           </section>
         ))}
       </div>

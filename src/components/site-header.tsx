@@ -45,7 +45,7 @@ export function SiteHeader({
   return (
     <header className="sticky top-0 z-50 bg-ink">
       {announcement && (
-        <p className="border-b border-ink-line py-2 text-center text-[11px] tracking-[0.08em] text-mute">
+        <p className="border-b border-ink-line py-2 text-center font-display text-[11px] tracking-[0.16em] text-mute uppercase">
           {announcement}
         </p>
       )}
@@ -67,7 +67,7 @@ export function SiteHeader({
         />
 
         <form onSubmit={onSearch} className="mx-6 hidden flex-1 lg:block">
-          <div className="flex items-center gap-3 rounded-lg bg-ink-soft px-4 transition focus-within:ring-1 focus-within:ring-accent/60">
+          <div className="flex items-center gap-3 border border-ink-line bg-ink-soft px-4 transition focus-within:border-bone">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -95,7 +95,7 @@ export function SiteHeader({
           <button onClick={open} className="link-quiet relative" aria-label={`Carrito, ${count} productos`}>
             <BagIcon size={21} />
             {count > 0 && (
-              <span className="tnum absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-bone px-1 text-[10px] font-semibold text-black">
+              <span className="tnum absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center bg-bone px-1 text-[10px] font-semibold text-ink">
                 {count}
               </span>
             )}
@@ -109,7 +109,7 @@ export function SiteHeader({
             <Link
               key={link.href}
               href={link.href}
-              className="text-[13px] font-medium tracking-wide transition hover:text-accent"
+              className="font-display text-[13px] font-medium tracking-[0.14em] uppercase transition hover:text-mute"
             >
               {link.label}
             </Link>
@@ -133,7 +133,7 @@ export function SiteHeader({
             </div>
 
             <form onSubmit={onSearch} className="p-5">
-              <div className="flex items-center gap-3 rounded-lg bg-ink-soft px-4">
+              <div className="flex items-center gap-3 border border-ink-line bg-ink-soft px-4">
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -155,7 +155,7 @@ export function SiteHeader({
                     <Link
                       href={link.href}
                       onClick={() => setMenuOpen(false)}
-                      className="block border-b border-ink-line py-3.5 text-sm"
+                      className="block border-b border-ink-line py-3.5 font-display text-sm tracking-[0.1em] uppercase"
                     >
                       {link.label}
                     </Link>
@@ -165,7 +165,7 @@ export function SiteHeader({
                   <Link
                     href="/pedido"
                     onClick={() => setMenuOpen(false)}
-                    className="block border-b border-ink-line py-3.5 text-sm"
+                    className="block border-b border-ink-line py-3.5 font-display text-sm tracking-[0.1em] uppercase"
                   >
                     Mi pedido
                   </Link>

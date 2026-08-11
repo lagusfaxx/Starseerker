@@ -1,23 +1,24 @@
 import Link from "next/link";
 
-/** Título de sección centrado con el filete de cobre de la marca. */
+/** Encabezado de sección: título condensado a la izquierda y enlace opcional. */
 export function SectionTitle({
   title,
   href,
   linkLabel,
+  className = "",
 }: {
   title: string;
   href?: string;
   linkLabel?: string;
+  className?: string;
 }) {
   return (
-    <div className="pt-16 pb-9 text-center">
-      <h2 className="display text-2xl sm:text-[1.75rem]">{title}</h2>
-      <span className="rule-accent" aria-hidden="true" />
+    <div className={`flex flex-wrap items-end justify-between gap-4 pb-8 ${className}`}>
+      <h2 className="section-title">{title}</h2>
       {href && linkLabel && (
         <Link
           href={href}
-          className="link-quiet mt-5 inline-block text-[12px] tracking-[0.14em] uppercase"
+          className="link-quiet font-display text-xs tracking-[0.18em] uppercase"
         >
           {linkLabel}
         </Link>

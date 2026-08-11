@@ -1,91 +1,177 @@
 @import "tailwindcss";
 
+/*
+ * Sistema visual: la estructura de la tienda de referencia (titulares
+ * condensados en mayúsculas, botones rectangulares, tarjetas separadas por
+ * filetes) llevada a una colorimetría en blanco y negro.
+ */
 @theme {
   --color-ink: #000000;
   --color-ink-soft: #0d0d0f;
   --color-ink-raise: #151517;
-  --color-ink-line: #232326;
+  --color-ink-line: #262629;
   --color-bone: #f4f4f4;
-  --color-mute: #9a9aa0;
-  /* Paleta monocroma: el acento es el propio blanco. */
+  --color-bone-soft: #c9c9cc;
+  --color-mute: #8f8f96;
+  /* Único acento de la paleta: el propio blanco. */
   --color-accent: #ffffff;
-  --color-accent-hi: #ffffff;
 
-  --font-sans: var(--font-display);
+  --font-display: var(--font-display), "Arial Narrow", system-ui, sans-serif;
+  --font-sans: var(--font-body), system-ui, sans-serif;
+
+  --animate-marquee: marquee 28s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: var(--color-ink);
   color: var(--color-bone);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+}
+
+/* Titulares condensados, en mayúsculas y apretados. */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
 }
 
 ::selection {
   background: var(--color-bone);
-  color: #000000;
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--color-ink),
+    0 0 0 4px var(--color-bone);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2c2c30 transparent;
+  scrollbar-color: #2f2f34 transparent;
 }
 
-/* Cifras de ancho fijo para que los precios alineen. */
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- Estructura ----------------------------------------------------------- */
+
 @utility container-page {
   width: 100%;
   margin-inline: auto;
-  max-width: 82rem;
-  padding-inline: 1.25rem;
+  max-width: 100rem;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-page {
+    padding-inline: 1.5rem;
+  }
 }
 
 @media (min-width: 1024px) {
   .container-page {
-    padding-inline: 2rem;
+    padding-inline: 2.5rem;
   }
 }
-
-/* --- Superficies ---------------------------------------------------------- */
 
 @utility panel {
   background: var(--color-ink-soft);
   border: 1px solid var(--color-ink-line);
-  border-radius: 0.75rem;
+}
+
+@utility card {
+  background: var(--color-ink-soft);
+  border: 1px solid var(--color-ink-line);
 }
 
 /* --- Tipografía ----------------------------------------------------------- */
 
+@utility section-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  font-size: 1.875rem;
+}
+
+@media (min-width: 640px) {
+  .section-title {
+    font-size: 2.25rem;
+  }
+}
+
 @utility eyebrow {
+  font-family: var(--font-display);
   font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.22em;
+  font-weight: 600;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--color-mute);
 }
 
 @utility display {
+  font-family: var(--font-display);
   font-weight: 700;
+  text-transform: uppercase;
   letter-spacing: -0.01em;
-  line-height: 1.15;
+  line-height: 1.05;
 }
 
-/* Filete fino bajo los títulos de sección. */
-@utility rule-accent {
-  display: block;
-  width: 2.5rem;
-  height: 1px;
-  margin-inline: auto;
-  margin-top: 1rem;
-  background: rgba(255, 255, 255, 0.28);
+@utility badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-display);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.5rem;
 }
 
 /* --- Botones -------------------------------------------------------------- */
@@ -95,56 +181,64 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  padding: 0.8125rem 2rem;
+  font-family: var(--font-display);
   font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 1rem 2rem;
+  border: 2px solid transparent;
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
-    color 0.2s ease,
-    opacity 0.2s ease;
+    color 0.2s ease;
   cursor: pointer;
 }
 
 @utility btn-primary {
   background: var(--color-bone);
-  color: #000000;
+  color: var(--color-ink);
 }
 
-/* Alias histórico del panel: mismo botón. */
+/* Alias del panel. */
 @utility btn-light {
   background: var(--color-bone);
-  color: #000000;
+  color: var(--color-ink);
 }
 
 @utility btn-outline {
-  border-color: #3a3a3e;
+  border-color: var(--color-bone);
   color: var(--color-bone);
+  padding: calc(1rem - 2px) calc(2rem - 2px);
+}
+
+@utility btn-ghost {
+  border: 1px solid var(--color-ink-line);
+  color: var(--color-bone);
+  padding: 0.75rem 1.25rem;
 }
 
 @utility btn-sm {
-  padding: 0.5625rem 1.25rem;
-  font-size: 0.8125rem;
+  padding: 0.5625rem 1.125rem;
+  font-size: 0.75rem;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: #ffffff;
-}
-
+.btn-primary:hover:not(:disabled),
 .btn-light:hover:not(:disabled) {
   background: #ffffff;
 }
 
 .btn-outline:hover:not(:disabled) {
+  background: var(--color-bone);
+  color: var(--color-ink);
+}
+
+.btn-ghost:hover:not(:disabled) {
   border-color: var(--color-bone);
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .btn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -152,9 +246,8 @@ body {
 
 @utility field {
   width: 100%;
-  border-radius: 0.5rem;
   border: 1px solid var(--color-ink-line);
-  background: #0d0d0f;
+  background: var(--color-ink-soft);
   padding: 0.75rem 0.9375rem;
   font-size: 0.875rem;
   color: var(--color-bone);
@@ -164,9 +257,10 @@ body {
 
 @utility field-label {
   display: block;
+  font-family: var(--font-display);
   font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-mute);
   margin-bottom: 0.4375rem;
@@ -175,17 +269,17 @@ body {
 input.field:focus,
 select.field:focus,
 textarea.field:focus {
-  border-color: #6a6a70;
+  border-color: var(--color-bone);
 }
 
 input.field::placeholder,
 textarea.field::placeholder {
-  color: #6a6a70;
+  color: #63636a;
 }
 
 select.field {
   appearance: none;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9aa0' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='m6 9.5 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238f8f96' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='m6 9.5 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.7rem center;
   padding-right: 2.1rem;

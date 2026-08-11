@@ -53,7 +53,7 @@ export function SiteFooter({ settings }: { settings: StoreSettings }) {
       <div className="container-page grid gap-10 border-t border-ink-line py-12 sm:grid-cols-3">
         {COLUMNS.map((column) => (
           <nav key={column.title} aria-label={column.title} className="text-center sm:text-left">
-            <h2 className="eyebrow">{column.title}</h2>
+            <h2 className="eyebrow text-bone">{column.title}</h2>
             <ul className="mt-4 space-y-2.5 text-sm">
               {column.links.map((link) => (
                 <li key={link.href}>
