@@ -2,11 +2,14 @@
 # STARSEEKER Chile en Coolify
 #
 # Uso: en Coolify crea un recurso "Docker Compose" apuntando a este repositorio.
-# Coolify lee SERVICE_FQDN_APP para asignar el dominio y emitir el certificado,
-# y genera las contraseñas marcadas como SERVICE_PASSWORD_* la primera vez.
+# El dominio se asigna en Coolify → Domains (servicio `app`, puerto 3000), y
+# SERVICE_PASSWORD_POSTGRES la genera Coolify la primera vez.
 #
 # Las variables sin valor por defecto se completan en Coolify →
 # Environment Variables (ver .env.example y el README).
+#
+# `environment` usa sintaxis de mapa a propósito: la de lista rompe el parser
+# de Coolify ("non-string key in services.app.environment").
 # ---------------------------------------------------------------------------
 
 services:
@@ -16,25 +19,25 @@ services:
       dockerfile: Dockerfile
       args:
         # El dominio también se hornea en el build para las URLs canónicas.
-        APP_URL: ${APP_URL:-https://starseerker.cl}
+        APP_URL: "${APP_URL:-https://starseerker.cl}"
     restart: unless-stopped
+    expose:
+      - "3000"
     environment:
-      # Coolify sustituye este valor por el dominio del servicio (puerto 3000).
-      - SERVICE_FQDN_APP_3000
-      - APP_URL=${APP_URL:-https://starseerker.cl}
-      - DATABASE_URL=postgresql://starseerker:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/starseerker?schema=public
-      - AUTH_SECRET=${AUTH_SECRET:?define AUTH_SECRET en Coolify}
-      - MP_ACCESS_TOKEN=${MP_ACCESS_TOKEN:-}
-      - MP_WEBHOOK_SECRET=${MP_WEBHOOK_SECRET:-}
-      - RESEND_API_KEY=${RESEND_API_KEY:-}
-      - RESEND_FROM=${RESEND_FROM:-STARSEEKER Chile <hola@starseerker.cl>}
-      - ORDER_NOTIFICATION_EMAIL=${ORDER_NOTIFICATION_EMAIL:-ventas@starseerker.cl}
+      APP_URL: "${APP_URL:-https://starseerker.cl}"
+      DATABASE_URL: "postgresql://starseerker:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/starseerker?schema=public"
+      AUTH_SECRET: "${AUTH_SECRET}"
+      MP_ACCESS_TOKEN: "${MP_ACCESS_TOKEN:-}"
+      MP_WEBHOOK_SECRET: "${MP_WEBHOOK_SECRET:-}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      RESEND_FROM: "${RESEND_FROM:-STARSEEKER Chile <hola@starseerker.cl>}"
+      ORDER_NOTIFICATION_EMAIL: "${ORDER_NOTIFICATION_EMAIL:-ventas@starseerker.cl}"
       # Usuario inicial del panel: se crea solo en el primer arranque.
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@starseerker.cl}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?define ADMIN_PASSWORD en Coolify}
-      - ADMIN_NAME=${ADMIN_NAME:-Administrador}
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@starseerker.cl}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      ADMIN_NAME: "${ADMIN_NAME:-Administrador}"
       # auto = sembrar solo si la tienda está vacía. true fuerza, false desactiva.
-      - RUN_SEED=${RUN_SEED:-auto}
+      RUN_SEED: "${RUN_SEED:-auto}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,9 +56,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=starseerker
-      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
-      - POSTGRES_DB=starseerker
+      POSTGRES_USER: starseerker
+      POSTGRES_PASSWORD: "${SERVICE_PASSWORD_POSTGRES}"
+      POSTGRES_DB: starseerker
     volumes:
       - starseerker-postgres:/var/lib/postgresql/data
     healthcheck:
