@@ -163,7 +163,7 @@ export function BannerForm({ values }: { values: BannerFormValues }) {
               </p>
             ) : null}
             {title ? (
-              <p className="mt-2 font-display text-4xl font-bold uppercase leading-none tracking-tight text-black">
+              <p className="mt-2 font-display text-4xl font-bold uppercase leading-none tracking-tight text-ink">
                 {title}
               </p>
             ) : null}

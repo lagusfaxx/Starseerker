@@ -141,7 +141,7 @@ function BannerText({
       ) : null}
       {content.title ? (
         <h2
-          className={`mt-3 font-display font-bold uppercase leading-none tracking-tight text-black ${
+          className={`mt-3 font-display font-bold uppercase leading-none tracking-tight text-ink ${
             splitLayout ? 'text-3xl sm:text-4xl lg:text-5xl' : 'text-4xl sm:text-6xl lg:text-8xl'
           }`}
         >

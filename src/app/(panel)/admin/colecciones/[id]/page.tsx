@@ -93,7 +93,7 @@ export default async function EditCollectionPage({ params, searchParams }: PageP
           <input type="hidden" name="collectionId" value={collection.id} />
           <button
             type="submit"
-            className="btn bg-red-600 px-6 py-3 text-black transition-colors hover:bg-red-700"
+            className="btn bg-red-600 px-6 py-3 text-white transition-colors hover:bg-red-700"
           >
             Eliminar coleccion
           </button>

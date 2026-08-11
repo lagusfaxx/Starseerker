@@ -90,7 +90,9 @@ function toFeature(banner: BannerRow): FeatureBannerContent {
     title: banner.title ?? '',
     subtitle: banner.subtitle ?? '',
     subtitleBold: banner.subtitleBold,
-    ctaLabel: banner.ctaLabel || 'Comprar ahora',
+    // Sin texto no hay boton. Si el propietario vacia el campo es porque
+    // quiere la franja limpia, asi que no se inventa ninguna etiqueta.
+    ctaLabel: banner.ctaLabel ?? '',
     ctaHref: banner.ctaHref || '/products',
     image: banner.image,
     video: toBannerVideo(banner.video),
@@ -155,7 +157,8 @@ export default async function HomePage() {
     title: '',
     subtitle: banner.subtitle ?? '',
     subtitleBold: banner.subtitleBold,
-    ctaLabel: banner.ctaLabel || 'Ver mas',
+    // Igual que en las franjas: el boton solo aparece si tiene texto.
+    ctaLabel: banner.ctaLabel ?? '',
     ctaHref: banner.ctaHref || '/products',
     image: banner.image,
     video: toBannerVideo(banner.video),

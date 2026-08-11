@@ -154,7 +154,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
               para describir la tienda. El h1 es el texto de mas abajo, que si
               es siempre el mismo y dice quien es la tienda y que vende.
             */}
-            <h2 className="mt-3 font-display text-4xl font-bold uppercase leading-[0.92] tracking-tight text-black sm:mt-4 sm:text-6xl lg:text-8xl">
+            <h2 className="mt-3 font-display text-4xl font-bold uppercase leading-[0.92] tracking-tight text-ink sm:mt-4 sm:text-6xl lg:text-8xl">
               {slide.highlight ? <span className="block text-brand">{slide.highlight}</span> : null}
               {slide.title ? <span className="block">{slide.title}</span> : null}
             </h2>
@@ -167,9 +167,11 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
                 {slide.subtitle}
               </p>
             ) : null}
-            <Link href={slide.ctaHref} className="btn-primary mt-7 sm:mt-9">
-              {slide.ctaLabel}
-            </Link>
+            {slide.ctaLabel ? (
+              <Link href={slide.ctaHref} className="btn-primary mt-7 sm:mt-9">
+                {slide.ctaLabel}
+              </Link>
+            ) : null}
           </div>
         </div>
 
@@ -178,7 +180,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
             <button
               type="button"
               onClick={() => goTo(index - 1)}
-              className="text-white/80 transition-colors hover:text-black"
+              className="text-white/80 transition-colors hover:text-brand"
               aria-label="Anterior"
             >
               <ArrowLeftIcon className="h-6 w-6" />
@@ -186,7 +188,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
             <button
               type="button"
               onClick={() => goTo(index + 1)}
-              className="text-white/80 transition-colors hover:text-black"
+              className="text-white/80 transition-colors hover:text-brand"
               aria-label="Siguiente"
             >
               <ArrowRightIcon className="h-6 w-6" />

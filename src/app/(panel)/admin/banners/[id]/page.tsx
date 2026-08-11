@@ -70,7 +70,7 @@ export default async function EditBannerPage({ params, searchParams }: PageProps
           <input type="hidden" name="bannerId" value={banner.id} />
           <button
             type="submit"
-            className="btn bg-red-600 px-6 py-3 text-black transition-colors hover:bg-red-700"
+            className="btn bg-red-600 px-6 py-3 text-white transition-colors hover:bg-red-700"
           >
             Eliminar banner
           </button>

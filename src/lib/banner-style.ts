@@ -93,7 +93,7 @@ export const OVERLAY_CLASS: Record<HeroOverlay, string> = {
  * cambia, siempre lleva el mismo peso.
  */
 export function subtitleWeightClass(bold: boolean): string {
-  return bold ? 'font-semibold text-black' : 'text-white/80';
+  return bold ? 'font-semibold text-white' : 'text-white/80';
 }
 
 /**

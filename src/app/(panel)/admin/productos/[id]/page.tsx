@@ -129,7 +129,7 @@ export default async function EditProductPage({ params, searchParams }: PageProp
           <input type="hidden" name="productId" value={product.id} />
           <button
             type="submit"
-            className="btn bg-red-600 px-6 py-3 text-black transition-colors hover:bg-red-700"
+            className="btn bg-red-600 px-6 py-3 text-white transition-colors hover:bg-red-700"
           >
             {product._count.orderItems > 0 ? 'Archivar producto' : 'Eliminar producto'}
           </button>

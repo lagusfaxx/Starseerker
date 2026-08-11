@@ -22,7 +22,7 @@ export function NewsletterForm() {
           required
           maxLength={180}
           placeholder="tu@correo.com"
-          className="w-full border border-white/20 bg-black/40 px-4 py-3 text-sm text-black placeholder:text-ink-muted focus:border-brand focus:outline-none"
+          className="w-full border border-white/20 bg-black/40 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none"
         />
         <SubmitButton />
       </div>

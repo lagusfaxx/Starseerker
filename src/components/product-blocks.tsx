@@ -44,7 +44,7 @@ const THEME: Record<
   dark: {
     section: 'bg-sand text-ink',
     divider: 'border-white/15',
-    title: 'text-black',
+    title: 'text-ink',
     body: 'text-ink-soft',
     eyebrow: 'text-ink-muted',
   },
@@ -271,16 +271,21 @@ function BlockVideo({ block }: { block: ProductBlockData }) {
   }
 
   // El iframe llega en 16:9 y la franja tambien lo es, asi que llena el hueco
-  // exacto sin recortes. Se le quitan los eventos del raton para que la
-  // interfaz de YouTube o Vimeo no asome al pasar por encima.
+  // exacto. Se agranda un 30% por la misma razon que en los banners:
+  // `controls=0` es una peticion y YouTube vuelve a dibujar su interfaz en
+  // cuanto el reproductor se pausa o reinicia el bucle, asi que la barra de
+  // controles y el titulo se dejan fuera del recorte.
   return (
-    <div aria-hidden="true" className="pointer-events-none relative aspect-video w-full bg-black">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none relative aspect-video w-full overflow-hidden bg-black"
+    >
       <iframe
         src={video.src}
         title=""
         tabIndex={-1}
         allow="autoplay; encrypted-media; picture-in-picture"
-        className="absolute inset-0 h-full w-full border-0"
+        className="pointer-events-none absolute inset-0 h-full w-full scale-[1.3] border-0"
       />
     </div>
   );

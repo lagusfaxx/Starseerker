@@ -118,7 +118,7 @@ function BannerGroup({
                         {banner.eyebrow}
                       </p>
                     ) : null}
-                    <p className="truncate font-display text-2xl font-bold uppercase leading-none tracking-tight text-black">
+                    <p className="truncate font-display text-2xl font-bold uppercase leading-none tracking-tight text-ink">
                       {banner.title || 'Sin titular'}
                     </p>
                     {banner.subtitle ? (
