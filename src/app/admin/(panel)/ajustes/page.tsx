@@ -1,5 +1,6 @@
 import { getSettings } from "@/lib/settings";
 import { updateSettings } from "@/app/admin/actions";
+import { ImageUrlField } from "@/components/admin/image-url-field";
 
 export const dynamic = "force-dynamic";
 
@@ -10,19 +11,27 @@ export default async function AdminSettingsPage() {
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold">Ajustes de la tienda</h1>
       <p className="mt-2 text-sm text-mute">
-        Estos valores se usan en la portada, el pie de página y los correos transaccionales.
+        Identidad, contacto y reglas comerciales. El contenido de la página de inicio se edita en{" "}
+        <a href="/admin/portada" className="text-bone underline underline-offset-4">
+          Portada
+        </a>
+        .
       </p>
 
       <form action={updateSettings} className="mt-8 space-y-8">
         <section className="panel space-y-4 p-5">
           <h2 className="text-sm font-bold">Logo</h2>
           <p className="text-xs text-mute">
-            Deja el archivo en <code className="text-bone">public/</code> y escribe la ruta
-            (por ejemplo <code className="text-bone">/logo.svg</code>), o pega una URL completa.
             Si lo dejas vacío se usa el logotipo tipográfico.
           </p>
           <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
-            <Text name="logoUrl" label="Archivo o URL del logo" value={settings.logoUrl} />
+            <ImageUrlField
+              name="logoUrl"
+              label="Archivo o URL del logo"
+              defaultValue={settings.logoUrl}
+              hint="Deja el archivo en public/ y escribe /logo.svg, o pega una URL."
+              previewClassName="h-16 w-28"
+            />
             <div>
               <label className="field-label">Alto en la cabecera (px)</label>
               <input
@@ -35,18 +44,6 @@ export default async function AdminSettingsPage() {
               />
             </div>
           </div>
-          {settings.logoUrl && (
-            <div className="border border-ink-line p-4">
-              <p className="field-label">Vista previa</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={settings.logoUrl}
-                alt="Logo actual"
-                style={{ height: settings.logoHeight }}
-                className="w-auto"
-              />
-            </div>
-          )}
         </section>
 
         <section className="panel space-y-4 p-5">
@@ -60,32 +57,6 @@ export default async function AdminSettingsPage() {
             <Text name="whatsapp" label="WhatsApp" value={settings.whatsapp} />
             <Text name="address" label="Dirección" value={settings.address} />
             <Text name="instagram" label="Instagram (URL)" value={settings.instagram} />
-          </div>
-        </section>
-
-        <section className="panel space-y-4 p-5">
-          <h2 className="text-sm font-bold">Portada</h2>
-          <div className="grid gap-4">
-            <Text name="heroTitle" label="Título principal" value={settings.heroTitle} />
-            <div>
-              <label className="field-label">Subtítulo</label>
-              <textarea
-                name="heroSubtitle"
-                rows={2}
-                defaultValue={settings.heroSubtitle}
-                className="field"
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Text name="heroCtaLabel" label="Texto del botón" value={settings.heroCtaLabel} />
-              <Text name="heroCtaHref" label="Enlace del botón" value={settings.heroCtaHref} />
-              <Text
-                name="heroVideoUrl"
-                label="Video de fondo (URL .mp4)"
-                value={settings.heroVideoUrl}
-              />
-              <Text name="heroPosterUrl" label="Imagen de respaldo" value={settings.heroPosterUrl} />
-            </div>
           </div>
         </section>
 

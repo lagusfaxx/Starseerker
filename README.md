@@ -10,7 +10,9 @@ y un panel de administración propio con **despachos configurables por región**
 
 **Tienda**
 
-- Portada con video de fondo configurable, colecciones, destacados, nuevos y más vendidos.
+- **Portada armable por bloques** desde el panel: portada con video o imagen, filas de productos
+  (grilla o carrusel), categorías, galerías de imágenes o videos, bloques de imagen + texto y
+  franjas de texto. Se reordenan, se ocultan y se editan todos sus textos y medios.
 - Catálogo con filtros (nuevos / más vendidos / ofertas), orden por precio, "solo con stock" y paginación.
 - Buscador de productos.
 - Ficha de producto con galería, bullets, ficha técnica, datos de garantía, JSON-LD para Google
@@ -35,7 +37,9 @@ y un panel de administración propio con **despachos configurables por región**
   sobre X, plazos, rangos de subtotal, retiro en tienda). Avisa si alguna región queda sin cobertura.
 - Cupones: porcentaje, monto fijo o envío gratis, con vigencia, mínimo de compra y límite de usos.
 - Mensajes de contacto y lista de suscriptores.
-- Ajustes de la tienda (identidad, portada, barra de anuncios, umbral de envío gratis).
+- Portada: constructor de bloques con vista previa de cada imagen o video.
+- Categorías con su propia página, imagen o video y orden.
+- Ajustes de la tienda (logo, identidad, barra de anuncios, reglas comerciales).
 
 ---
 
@@ -87,6 +91,27 @@ SEED_CATALOG=true npm run db:seed
 
 Los productos quedan como borrador: no aparecen en la tienda hasta que les pongas precio y
 los publiques.
+
+---
+
+## Constructor de portada
+
+La página de inicio se guarda como una lista de bloques en `Setting["home"]` y se edita en
+**Panel → Portada**. Tipos disponibles:
+
+| Bloque | Qué permite |
+| --- | --- |
+| Portada (video o imagen) | Media a pantalla completa, frase encima, franja de texto y botón. |
+| Productos | Título, filtro (novedades, más vendidos, ofertas, destacados o todos), categoría, cantidad y formato grilla o carrusel. |
+| Categorías | Grilla con la imagen de cada categoría. |
+| Galería de imágenes | Fotos o videos en grilla o carrusel. |
+| Imagen/video + texto | Media a un lado y texto al otro, con el orden invertible y botón. |
+| Franja de texto | Título, texto y botón centrados. |
+
+**Imágenes y videos por URL en todas partes.** Cualquier campo de medios acepta la URL de una
+foto o de un video (`.mp4`, `.webm`, `.mov`…): el sitio detecta la extensión y renderiza
+`<img>` o `<video>` según corresponda. Aplica a la portada, las categorías, las galerías y las
+fotos de cada producto. Los campos del panel muestran una vista previa inmediata.
 
 ---
 

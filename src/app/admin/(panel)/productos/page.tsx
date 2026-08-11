@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { formatCLP } from "@/lib/format";
-import { deleteCategory, saveCategory, toggleProductActive } from "@/app/admin/actions";
+import { toggleProductActive } from "@/app/admin/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,24 +13,21 @@ export default async function AdminProductsPage({
 }) {
   const { q } = await searchParams;
 
-  const [products, categories] = await Promise.all([
-    prisma.product.findMany({
-      where: q?.trim()
-        ? {
-            OR: [
-              { name: { contains: q.trim(), mode: "insensitive" } },
-              { sku: { contains: q.trim(), mode: "insensitive" } },
-            ],
-          }
-        : undefined,
-      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-      include: {
-        images: { orderBy: { position: "asc" }, take: 1 },
-        category: { select: { name: true } },
-      },
-    }),
-    prisma.category.findMany({ orderBy: { position: "asc" } }),
-  ]);
+  const products = await prisma.product.findMany({
+    where: q?.trim()
+      ? {
+          OR: [
+            { name: { contains: q.trim(), mode: "insensitive" } },
+            { sku: { contains: q.trim(), mode: "insensitive" } },
+          ],
+        }
+      : undefined,
+    orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+    include: {
+      images: { orderBy: { position: "asc" }, take: 1 },
+      category: { select: { name: true } },
+    },
+  });
 
   return (
     <div>
@@ -144,98 +141,6 @@ export default async function AdminProductsPage({
         </table>
       </div>
 
-      <section className="mt-12">
-        <h2 className="text-lg font-bold">Categorías</h2>
-        <p className="mt-1 text-xs text-mute">
-          Las categorías aparecen en el menú principal y en la portada.
-        </p>
-
-        <div className="mt-5 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="panel overflow-hidden">
-            <ul className="divide-y divide-ink-line">
-              {categories.length === 0 && (
-                <li className="px-5 py-8 text-center text-sm text-mute">Sin categorías aún.</li>
-              )}
-              {categories.map((category) => (
-                <li key={category.id} className="px-5 py-4">
-                  <form action={saveCategory} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                    <input type="hidden" name="id" value={category.id} />
-                    <input name="name" defaultValue={category.name} className="field" />
-                    <input
-                      name="image"
-                      defaultValue={category.image ?? ""}
-                      placeholder="URL de imagen"
-                      className="field"
-                    />
-                    <input
-                      name="description"
-                      defaultValue={category.description ?? ""}
-                      placeholder="Descripción"
-                      className="field sm:col-span-2"
-                    />
-                    <input
-                      name="position"
-                      type="number"
-                      defaultValue={category.position}
-                      className="field sm:w-24"
-                    />
-                    <div className="flex items-center gap-3 sm:col-span-3">
-                      <label className="flex items-center gap-2 text-xs text-mute">
-                        <input
-                          type="checkbox"
-                          name="active"
-                          defaultChecked={category.active}
-                          className="h-4 w-4 "
-                        />
-                        Activa
-                      </label>
-                      <button className="btn btn-outline btn-sm">
-                        Guardar
-                      </button>
-                    </div>
-                  </form>
-                  <form action={deleteCategory} className="mt-2">
-                    <input type="hidden" name="id" value={category.id} />
-                    <button className="text-xs text-red-400/80 hover:text-red-300">Eliminar</button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <form action={saveCategory} className="panel h-fit space-y-3 p-5">
-            <h3 className="text-sm font-bold">Nueva categoría</h3>
-            <div>
-              <label className="field-label">Nombre</label>
-              <input name="name" className="field" required />
-            </div>
-            <div>
-              <label className="field-label">Descripción</label>
-              <input name="description" className="field" />
-            </div>
-            <div>
-              <label className="field-label">Imagen (URL)</label>
-              <input name="image" className="field" />
-            </div>
-            <div>
-              <label className="field-label">Orden</label>
-              <input name="position" type="number" defaultValue={0} className="field" />
-            </div>
-            <label className="flex items-center gap-2 text-xs text-mute">
-              <input
-                type="checkbox"
-                name="active"
-                defaultChecked
-                className="h-4 w-4 "
-              />
-              Activa
-            </label>
-            <button className="btn btn-light w-full">
-              Crear categoría
-            </button>
-          </form>
-        </div>
-      </section>
     </div>
   );
 }

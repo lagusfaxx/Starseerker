@@ -14,11 +14,10 @@ export type StoreSettings = {
   address: string;
   instagram: string;
   freeShippingThreshold: number | null;
+  /** Valores iniciales del bloque de portada; después se editan en Panel → Portada. */
   heroVideoUrl: string;
   heroPosterUrl: string;
-  /** Frase en cursiva sobre el video de portada. */
   heroTitle: string;
-  /** Franja negra bajo el video. */
   heroSubtitle: string;
   heroCtaLabel: string;
   heroCtaHref: string;

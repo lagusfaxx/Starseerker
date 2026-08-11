@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/components/cart-context";
+import { isVideoUrl } from "@/lib/media";
 import { discountPercent, formatCLP } from "@/lib/format";
 
 export type ProductCardData = {
@@ -32,13 +33,24 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         className="relative block aspect-square overflow-hidden rounded-lg bg-black"
       >
         {product.image ? (
-          <Image
-            src={product.image}
-            alt={product.imageAlt ?? product.name}
-            fill
-            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 24vw"
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
-          />
+          isVideoUrl(product.image) ? (
+            <video
+              src={product.image}
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          ) : (
+            <Image
+              src={product.image}
+              alt={product.imageAlt ?? product.name}
+              fill
+              sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 24vw"
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+          )
         ) : (
           <div className="grid h-full place-items-center text-[11px] tracking-[0.2em] text-mute uppercase">
             Sin imagen

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { deleteProduct, saveProduct } from "@/app/admin/actions";
 import { ArrowLeftIcon } from "@/components/icons";
+import { ImageListField } from "@/components/admin/image-url-field";
 
 export const dynamic = "force-dynamic";
 
@@ -176,16 +177,12 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
         </section>
 
         <section className="panel space-y-4 p-5">
-          <h2 className="text-sm font-bold">Imágenes</h2>
-          <p className="text-xs text-mute">
-            Una URL por línea. La primera se usa como imagen principal en los listados.
-          </p>
-          <textarea
+          <h2 className="text-sm font-bold">Imágenes y videos</h2>
+          <ImageListField
             name="images"
-            rows={5}
+            label="Archivos del producto"
             defaultValue={(product?.images ?? []).map((image) => image.url).join("\n")}
-            placeholder="https://…/producto-1.jpg"
-            className="field font-mono text-xs"
+            hint="Una URL por línea. La primera es la principal. Acepta fotos y videos .mp4."
           />
         </section>
 
