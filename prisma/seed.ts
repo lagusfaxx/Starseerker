@@ -1,8 +1,17 @@
 /**
- * Datos iniciales: usuario admin, categorías, productos de ejemplo,
- * zonas de despacho para las 16 regiones y un cupón de bienvenida.
+ * Datos iniciales.
  *
- *   npm run db:seed
+ * Siempre crea lo estructural: usuario del panel, categorías, zonas de despacho
+ * para las 16 regiones y un cupón de bienvenida.
+ *
+ * NO crea productos. El catálogo lo cargas tú desde el panel con tus precios,
+ * fotos y stock reales. Si quieres partir con el esqueleto del catálogo oficial
+ * de STARSEEKER (nombres, SKU y categoría, sin precio y sin publicar), ejecuta:
+ *
+ *   SEED_CATALOG=true npm run db:seed
+ *
+ * Los productos quedan como borrador (`active: false`) y con precio 0: no
+ * aparecen en la tienda hasta que les pongas precio y los publiques.
  */
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -13,139 +22,84 @@ if (!connectionString) throw new Error("DATABASE_URL no está configurado.");
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
+/** Las mismas categorías que usa la marca: molinos, máquinas portátiles y accesorios. */
 const CATEGORIES = [
   {
     slug: "molinos",
-    name: "Molinos",
-    description: "Molinos eléctricos y manuales con fresas cónicas de acero.",
+    name: "Molinos de café",
+    description: "Molinos eléctricos de sobremesa y portátiles.",
     position: 1,
   },
   {
     slug: "maquinas-espresso",
-    name: "Máquinas de espresso",
-    description: "Espresso portátil con presión ajustable para viajar o para la oficina.",
+    name: "Máquinas de espresso portátiles",
+    description: "Espresso fuera de casa, con presión real.",
     position: 2,
   },
   {
     slug: "accesorios",
     name: "Accesorios",
-    description: "Estuches, tampers, filtros y repuestos originales.",
+    description: "Portafiltros, tampers, soportes y repuestos originales.",
     position: 3,
   },
 ];
 
-const PRODUCTS = [
+/**
+ * Esqueleto del catálogo oficial de STARSEEKER (starseekercoffee.com).
+ * Solo nombre, SKU y categoría: los precios en pesos, las fotos, el stock y las
+ * fichas técnicas los cargas tú. Sin `SEED_CATALOG=true` no se crea ninguno.
+ */
+const CATALOG: { name: string; sku: string; category: string }[] = [
+  // Molinos
+  { name: "STARSEEKER E55Pro Electric Coffee Grinder", sku: "SS-E55PRO", category: "molinos" },
+  { name: "STARSEEKER E64 Electric Coffee Grinder 64MM", sku: "SS-E64", category: "molinos" },
+  { name: "STARSEEKER EDGE Electric Coffee Grinder", sku: "SS-EDGE", category: "molinos" },
+  { name: "STARSEEKER EDGEPLUS Electric Coffee Grinder", sku: "SS-EDGEPLUS", category: "molinos" },
+  { name: "STARSEEKER EDGE63 Electric Coffee Grinder", sku: "SS-EDGE63", category: "molinos" },
   {
-    slug: "starseeker-e55pro-molino-electrico",
-    name: "STARSEEKER E55Pro Molino Eléctrico",
-    subtitle: "Fresas cónicas de 55 mm",
-    sku: "SS-E55PRO",
-    price: 289000,
-    compareAtPrice: null,
-    stock: 12,
+    name: "STARSEEKER EDGEMini Electric Portable Coffee Grinder",
+    sku: "SS-EDGEMINI",
     category: "molinos",
-    featured: true,
-    isNew: true,
-    bestSeller: true,
-    highlights: [
-      "Fresas cónicas de acero endurecido de 55 mm",
-      "Micro-ajuste continuo: de espresso a prensa francesa",
-      "Motor DC de bajo torque que no calienta el café",
-      "Retención mínima gracias al conducto antiestático",
-    ],
-    specs: [
-      { label: "Fresas", value: "Cónicas de acero SUS440, 55 mm" },
-      { label: "Ajustes de molienda", value: "Continuo, 90 clics por vuelta" },
-      { label: "Motor", value: "DC 200 W, 1400 rpm" },
-      { label: "Capacidad de tolva", value: "40 g" },
-      { label: "Dimensiones", value: "310 × 120 × 180 mm" },
-      { label: "Peso", value: "3,2 kg" },
-    ],
-    description:
-      "El E55Pro es el molino de sobremesa de STARSEEKER para quienes muelen a diario y no quieren transar en consistencia. Sus fresas cónicas de 55 mm entregan una distribución de partículas pareja tanto en espresso como en métodos de filtrado.\n\nEl micro-ajuste continuo permite mover el punto de molienda en pasos muy finos, y el conducto antiestático reduce la retención a menos de 0,3 g entre dosis.",
   },
   {
-    slug: "starseeker-super58-espresso-portatil",
-    name: "STARSEEKER Super58 Máquina de Espresso Portátil",
-    subtitle: "18-20 g · presión ajustable · USB-C",
-    sku: "SS-SUPER58",
-    price: 249000,
-    compareAtPrice: 299000,
-    stock: 8,
-    category: "maquinas-espresso",
-    featured: true,
-    isNew: true,
-    bestSeller: true,
-    highlights: [
-      "Canasta de 18 a 20 g, tamaño de cafetería",
-      "Presión ajustable con manómetro integrado",
-      "Carga USB-C: funciona en el auto, camping u oficina",
-      "Incluye soporte plegable y bolso de transporte",
-    ],
-    specs: [
-      { label: "Canasta", value: "58 mm, 18-20 g" },
-      { label: "Presión", value: "Ajustable, 6-12 bar con manómetro" },
-      { label: "Batería", value: "3000 mAh, ~12 shots por carga" },
-      { label: "Carga", value: "USB-C PD" },
-      { label: "Peso", value: "1,1 kg" },
-      { label: "Incluye", value: "Soporte plegable, bolso, tamper" },
-    ],
-    description:
-      "Espresso de verdad donde estés. La Super58 usa una canasta de 58 mm igual a la de una máquina de cafetería, así que puedes replicar tus recetas sin recalcular dosis.\n\nEl manómetro integrado te muestra la presión en tiempo real y la palanca permite ajustarla durante la extracción, algo que ninguna portátil de esta gama ofrece.",
-  },
-  {
-    slug: "starseeker-go50-molino-portatil",
-    name: "STARSEEKER Go50 Molino Eléctrico Portátil",
-    subtitle: "Molino de viaje con batería",
+    name: "STARSEEKER Go50 Electric Portable Coffee Grinder",
     sku: "SS-GO50",
-    price: 299000,
-    compareAtPrice: null,
-    stock: 10,
     category: "molinos",
-    featured: true,
-    isNew: true,
-    bestSeller: false,
-    highlights: [
-      "Muele 20 g en menos de 20 segundos",
-      "Batería para más de 40 dosis por carga",
-      "Base magnética y cuerpo de aluminio",
-      "Compatible con portafiltros de 51 y 58 mm",
-    ],
-    specs: [
-      { label: "Fresas", value: "Cónicas de acero, 38 mm" },
-      { label: "Batería", value: "2600 mAh" },
-      { label: "Autonomía", value: "~40 dosis de 18 g" },
-      { label: "Peso", value: "640 g" },
-      { label: "Carga", value: "USB-C" },
-    ],
-    description:
-      "El Go50 es el molino que llevas en la mochila. Cuerpo de aluminio anodizado, fresas cónicas de 38 mm y una batería que aguanta un fin de semana completo de camping sin buscar enchufe.",
   },
   {
-    slug: "starseeker-supergobox",
-    name: "STARSEEKER SuperGoBox",
-    subtitle: "Estuche completo de viaje",
-    sku: "SS-GOBOX",
-    price: 568000,
-    compareAtPrice: 599000,
-    stock: 5,
+    name: "STARSEEKER 2-in-1 Black 40mm Burr Coffee Grinder",
+    sku: "SS-2IN1-40",
+    category: "molinos",
+  },
+  // Máquinas portátiles
+  {
+    name: "STARSEEKER Super58 Portable Espresso Machine",
+    sku: "SS-SUPER58",
+    category: "maquinas-espresso",
+  },
+  { name: "STARSEEKER SuperGoBox", sku: "SS-SUPERGOBOX", category: "maquinas-espresso" },
+  { name: "STARSEEKER SuperMiniBox", sku: "SS-SUPERMINIBOX", category: "maquinas-espresso" },
+  {
+    name: "CM-007 Portable Espresso Maker 15Bar Self-Heating",
+    sku: "SS-CM007",
+    category: "maquinas-espresso",
+  },
+  // Accesorios
+  {
+    name: "STARSEEKER 2 Ears 58mm Espresso Bottomless Portafilter",
+    sku: "SS-PF58",
     category: "accesorios",
-    featured: true,
-    isNew: false,
-    bestSeller: true,
-    highlights: [
-      "Maletín rígido con espuma troquelada",
-      "Espacio para molino, máquina, tazas y accesorios",
-      "Cierres con seguro y asa reforzada",
-    ],
-    specs: [
-      { label: "Material", value: "ABS reforzado con marco de aluminio" },
-      { label: "Interior", value: "Espuma EVA troquelada" },
-      { label: "Dimensiones", value: "450 × 330 × 150 mm" },
-      { label: "Peso", value: "2,8 kg vacío" },
-    ],
-    description:
-      "El maletín que ordena todo tu setup portátil: espuma troquelada para cada pieza, marco de aluminio y cierres con seguro. Pensado para que la máquina y el molino viajen sin golpes.",
+  },
+  {
+    name: "STARSEEKER Espresso Gravity Calibrated Tamper / Distributor",
+    sku: "SS-TAMPER",
+    category: "accesorios",
+  },
+  { name: "STARSEEKER WDT Espresso Distribution Tool", sku: "SS-WDT", category: "accesorios" },
+  {
+    name: "Xuanwu Heavy-Duty Stand for Super58 Portable Espresso Maker",
+    sku: "SS-STAND58",
+    category: "accesorios",
   },
 ];
 
@@ -155,6 +109,15 @@ const ZONES = [
     regionCodes: ["RM"],
     position: 1,
     rates: [
+      {
+        name: "Retiro en tienda",
+        description: "Te avisamos por correo cuando el pedido esté listo.",
+        price: 0,
+        etaMinDays: 1,
+        etaMaxDays: 2,
+        isPickup: true,
+        position: 0,
+      },
       {
         name: "Despacho estándar",
         description: "Entrega en domicilio",
@@ -171,15 +134,6 @@ const ZONES = [
         etaMinDays: 1,
         etaMaxDays: 1,
         position: 2,
-      },
-      {
-        name: "Retiro en tienda",
-        description: "Providencia, Santiago. Te avisamos cuando esté listo.",
-        price: 0,
-        etaMinDays: 1,
-        etaMaxDays: 2,
-        isPickup: true,
-        position: 0,
       },
     ],
   },
@@ -238,7 +192,7 @@ const ZONES = [
     rates: [
       {
         name: "Despacho a zona extrema",
-        description: "Plazos sujetos a conectividad del courier",
+        description: "Plazos sujetos a la conectividad del courier",
         price: 14990,
         etaMinDays: 5,
         etaMaxDays: 12,
@@ -249,7 +203,7 @@ const ZONES = [
 ];
 
 async function main() {
-  // --- Admin ---
+  // --- Usuario del panel ---
   const email = (process.env.ADMIN_EMAIL ?? "admin@starseerker.cl").toLowerCase();
   const password = process.env.ADMIN_PASSWORD ?? "cambia-esta-clave";
   await prisma.adminUser.upsert({
@@ -261,7 +215,7 @@ async function main() {
       passwordHash: await bcrypt.hash(password, 12),
     },
   });
-  console.log(`✓ Usuario admin: ${email}`);
+  console.log(`✓ Usuario del panel: ${email}`);
 
   // --- Categorías ---
   const categoryIds = new Map<string, string>();
@@ -274,17 +228,6 @@ async function main() {
     categoryIds.set(category.slug, saved.id);
   }
   console.log(`✓ ${CATEGORIES.length} categorías`);
-
-  // --- Productos ---
-  for (const product of PRODUCTS) {
-    const { category, ...rest } = product;
-    await prisma.product.upsert({
-      where: { slug: product.slug },
-      update: { ...rest, categoryId: categoryIds.get(category) },
-      create: { ...rest, categoryId: categoryIds.get(category) },
-    });
-  }
-  console.log(`✓ ${PRODUCTS.length} productos de ejemplo (sin imágenes: cárgalas desde el panel)`);
 
   // --- Zonas y tarifas de despacho ---
   for (const zone of ZONES) {
@@ -314,6 +257,36 @@ async function main() {
     create: { code: "BIENVENIDA10", type: "PERCENT", value: 10, minSubtotal: 50000 },
   });
   console.log("✓ Cupón BIENVENIDA10 (10% sobre $50.000)");
+
+  // --- Catálogo (opcional, como borrador) ---
+  if (process.env.SEED_CATALOG === "true") {
+    let created = 0;
+    for (const [index, item] of CATALOG.entries()) {
+      const slug = item.sku.toLowerCase();
+      const existing = await prisma.product.findUnique({ where: { sku: item.sku } });
+      if (existing) continue;
+      await prisma.product.create({
+        data: {
+          slug,
+          name: item.name,
+          sku: item.sku,
+          price: 0,
+          stock: 0,
+          active: false, // borrador: no aparece en la tienda
+          position: index,
+          categoryId: categoryIds.get(item.category),
+        },
+      });
+      created++;
+    }
+    console.log(
+      `✓ ${created} productos creados como borrador. Ponles precio, fotos y stock en el panel y publícalos.`,
+    );
+  } else {
+    console.log(
+      "· Sin productos: cárgalos desde el panel. Para partir con el esqueleto del catálogo oficial usa SEED_CATALOG=true.",
+    );
+  }
 }
 
 main()

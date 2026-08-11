@@ -36,8 +36,10 @@ services:
       ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@starseerker.cl}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
       ADMIN_NAME: "${ADMIN_NAME:-Administrador}"
-      # auto = sembrar solo si la tienda está vacía. true fuerza, false desactiva.
+      # auto = sembrar solo la primera vez. true fuerza, false desactiva.
       RUN_SEED: "${RUN_SEED:-auto}"
+      # El seed no crea productos; true agrega el catálogo oficial como borrador.
+      SEED_CATALOG: "${SEED_CATALOG:-false}"
     depends_on:
       postgres:
         condition: service_healthy

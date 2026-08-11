@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: "%s | STARSEEKER Chile",
   },
   description:
-    "Molinos y máquinas de espresso portátiles STARSEEKER. Distribuidor oficial en Chile: garantía local, despacho a todo el país y pago con Mercado Pago.",
+    "Molinos eléctricos, máquinas de espresso portátiles y accesorios STARSEEKER. Distribuidor oficial en Chile: garantía local, despacho a todo el país y pago con Mercado Pago.",
   openGraph: {
     type: "website",
     locale: "es_CL",

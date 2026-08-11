@@ -45,7 +45,7 @@ y un panel de administración propio con **despachos configurables por región**
 npm install
 cp .env.example .env      # completa las variables
 npm run db:deploy         # aplica las migraciones
-npm run db:seed           # admin, categorías, productos demo y zonas de envío
+npm run db:seed           # usuario del panel, categorías y zonas de envío
 npm run dev
 ```
 
@@ -66,6 +66,27 @@ npm run dev
 | `ORDER_NOTIFICATION_EMAIL` | Quién recibe el aviso de venta (separar con comas). |
 
 Sin `RESEND_API_KEY` la tienda funciona igual: los correos se omiten y quedan en el log.
+
+---
+
+## Qué vende la tienda
+
+STARSEEKER es una marca de **equipamiento para café**, no de café. Su línea son molinos
+eléctricos de sobremesa y portátiles (E55Pro, E64, EDGE, EDGEPLUS, EDGE63, EDGEMini, Go50),
+máquinas de espresso portátiles (Super58, SuperGoBox, SuperMiniBox, CM-007) y accesorios
+(portafiltros de 58 mm, tampers, herramientas WDT, soportes). Las tres categorías del seed
+—molinos, máquinas de espresso portátiles y accesorios— replican las de la marca.
+
+**El seed no crea productos.** El catálogo lo cargas tú desde el panel con tus precios en
+pesos, tus fotos y tu stock. Si quieres partir con el esqueleto del catálogo oficial
+(nombre, SKU y categoría, sin precio y sin publicar), corre:
+
+```bash
+SEED_CATALOG=true npm run db:seed
+```
+
+Los productos quedan como borrador: no aparecen en la tienda hasta que les pongas precio y
+los publiques.
 
 ---
 
@@ -135,7 +156,7 @@ El seed deja cinco zonas cubriendo las 16 regiones (RM, centro, norte, sur y zon
 | `docker compose up --build` | Levanta app + PostgreSQL igual que en Coolify. |
 | `npm run db:deploy` | Aplica migraciones (producción). |
 | `npm run db:migrate` | Crea una migración nueva (desarrollo). |
-| `npm run db:seed` | Datos iniciales. |
+| `npm run db:seed` | Datos iniciales (sin productos). |
 | `npm run db:studio` | Prisma Studio. |
 | `npm run smoke` | Prueba de humo end-to-end con Playwright sobre una instancia levantada. |
 | `npm run shots` | Capturas de las pantallas principales (escritorio y móvil) para revisar el diseño. |

@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/settings";
 export const metadata: Metadata = {
   title: "Quiénes somos",
   description:
-    "Somos el distribuidor oficial de STARSEEKER en Chile: importación directa, garantía local y servicio técnico en el país.",
+    "Distribuidor oficial en Chile de STARSEEKER: molinos eléctricos, máquinas de espresso portátiles y accesorios. Importación directa y garantía local.",
 };
 
 const PILLARS = [
@@ -32,19 +32,16 @@ export default async function AboutPage() {
         <p className="text-xs font-semibold tracking-[0.28em] text-accent uppercase">
           {settings.tagline}
         </p>
-        <h1 className="mt-4 display text-3xl sm:text-5xl">
-          Café de especialidad, sin fronteras
-        </h1>
+        <h1 className="mt-4 display text-3xl sm:text-5xl">Equipos, no café</h1>
         <p className="mt-6 text-base leading-relaxed text-bone/80">
-          STARSEEKER diseña molinos y máquinas de espresso portátiles pensadas para quienes no
-          quieren renunciar a una buena extracción, estén donde estén. Nosotros trajimos esa
-          propuesta a Chile con un compromiso simple: producto original, precio en pesos y soporte
-          real cuando lo necesitas.
+          STARSEEKER es una marca de equipamiento para café fundada en 2020: molinos eléctricos de
+          sobremesa y portátiles, máquinas de espresso portátiles y accesorios como portafiltros,
+          tampers y soportes. No vendemos café en grano: vendemos las herramientas con las que lo
+          preparas.
         </p>
         <p className="mt-4 text-base leading-relaxed text-bone/80">
-          Somos un equipo chico y obsesivo con el café. Probamos cada equipo antes de listarlo,
-          documentamos su ficha técnica en detalle y respondemos personalmente las consultas de
-          soporte.
+          Somos el distribuidor oficial de la marca en Chile. Importamos directo, publicamos precios
+          en pesos con IVA incluido y respondemos por la garantía en el país.
         </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-3">

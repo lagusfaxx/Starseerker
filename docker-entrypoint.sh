@@ -48,8 +48,10 @@ echo "→ Aplicando migraciones…"
 
 SHOULD_SEED="${RUN_SEED:-auto}"
 if [ "$SHOULD_SEED" = "auto" ]; then
-  PRODUCTS=$(db_query 'SELECT COUNT(*)::int FROM "Product"' 2>/dev/null || echo "")
-  if [ "$PRODUCTS" = "0" ]; then
+  # El seed ya no crea productos, así que la señal de "base nueva" es que no
+  # exista ningún usuario del panel.
+  ADMINS=$(db_query 'SELECT COUNT(*)::int FROM "AdminUser"' 2>/dev/null || echo "")
+  if [ "$ADMINS" = "0" ]; then
     SHOULD_SEED=true
   else
     SHOULD_SEED=false
@@ -57,10 +59,10 @@ if [ "$SHOULD_SEED" = "auto" ]; then
 fi
 
 if [ "$SHOULD_SEED" = "true" ]; then
-  echo "→ Sembrando datos iniciales (admin, categorías, zonas de despacho)…"
+  echo "→ Sembrando datos iniciales (usuario del panel, categorías y zonas de despacho)…"
   node /app/seed.mjs || echo "⚠ El seed falló; la aplicación arranca igualmente."
 elif [ "${RUN_SEED:-auto}" = "auto" ]; then
-  echo "→ La base ya tiene datos: se omite el seed."
+  echo "→ La base ya está inicializada: se omite el seed."
 else
   echo "→ Seed desactivado (RUN_SEED=false)."
 fi

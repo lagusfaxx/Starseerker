@@ -43,7 +43,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   heroVideoUrl: "",
   heroPosterUrl: "/hero-poster.jpg",
   heroTitle: "Convierte el café de especialidad en algo diario",
-  heroSubtitle: "Máquinas de espresso portátiles y molinos eléctricos",
+  heroSubtitle: "Molinos eléctricos y máquinas de espresso portátiles",
   heroCtaLabel: "",
   heroCtaHref: "/productos",
   announcement: "Despacho gratis sobre $150.000 · Garantía oficial en Chile",
