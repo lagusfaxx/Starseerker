@@ -1932,7 +1932,10 @@ async function testVideoUpload() {
   const vacio = new File([], 'vacio.mp4', { type: 'video/mp4' });
   check('rechaza un archivo vacio', 'error' in (await storeVideo(vacio)));
 
-  const mp4 = new File([new Uint8Array(1024)], 'fondo.mp4', { type: 'video/mp4' });
+  // Contenido predecible: el byte en la posicion N vale N modulo 251, para
+  // poder comprobar despues que un tramo empieza donde tiene que empezar.
+  const contenido = new Uint8Array(1024).map((_, i) => i % 251);
+  const mp4 = new File([contenido], 'fondo.mp4', { type: 'video/mp4' });
   const guardado = await storeVideo(mp4);
   check('guarda un MP4', !('error' in guardado));
 
@@ -1952,7 +1955,27 @@ async function testVideoUpload() {
     const versiones = await prisma.mediaVariant.count({ where: { mediaId: guardado.id } });
     check('no le prepara versiones optimizadas', versiones === 0);
 
+    // El corte lo hace Postgres, y es lo que permite servir un video grande
+    // sin leer el archivo entero en cada peticion. Se comprueba contra un
+    // contenido conocido: el byte en la posicion N vale N modulo 251.
+    const { getAssetChunk } = await import('../src/lib/media');
+    const inicio = await getAssetChunk(guardado.id, 0, 10);
+    check('corta desde el principio', inicio?.length === 10);
+    check('y devuelve los bytes correctos', inicio?.[0] === 0 && inicio?.[9] === 9);
+
+    const medio = await getAssetChunk(guardado.id, 100, 5);
+    check('corta desde la mitad', medio?.length === 5);
+    check(
+      'sin desplazarse un byte',
+      medio?.[0] === 100 % 251 && medio?.[4] === 104 % 251,
+      JSON.stringify(Array.from(medio ?? [])),
+    );
+
+    const final = await getAssetChunk(guardado.id, 1020, 999);
+    check('un tramo que se pasa del final devuelve lo que hay', final?.length === 4);
+
     await prisma.mediaAsset.delete({ where: { id: guardado.id } });
+    check('y despues de borrarlo no devuelve nada', (await getAssetChunk(guardado.id, 0, 10)) === null);
   }
 
   check('el tope es de 60 MB', MAX_VIDEO_BYTES === 60 * 1024 * 1024);
@@ -1984,6 +2007,78 @@ async function testVideoUpload() {
   check('varios tramos a la vez se sirven enteros', parseByteRange('bytes=0-9,20-29', 2048) === null);
 }
 
+/**
+ * Arma un MP4 minimo con el codec pedido.
+ *
+ * No es un video reproducible: solo el arbol de cajas que hay que recorrer
+ * para llegar al codec, que es lo unico que se esta probando.
+ */
+function mp4Falso(codecs: string[]): Buffer {
+  function caja(nombre: string, dentro: Buffer): Buffer {
+    const cabecera = Buffer.alloc(8);
+    cabecera.writeUInt32BE(8 + dentro.length, 0);
+    cabecera.write(nombre, 4, 'latin1');
+    return Buffer.concat([cabecera, dentro]);
+  }
+
+  const traks = codecs.map((codec) => {
+    // stsd: version y banderas (4) + numero de entradas (4) + la entrada, que
+    // empieza por su tamano (4) y sus cuatro letras.
+    const entrada = Buffer.concat([Buffer.alloc(4), Buffer.from(codec, 'latin1')]);
+    const stsd = caja('stsd', Buffer.concat([Buffer.alloc(8), entrada]));
+    return caja('trak', caja('mdia', caja('minf', caja('stbl', stsd))));
+  });
+
+  return Buffer.concat([caja('ftyp', Buffer.from('isom')), caja('moov', Buffer.concat(traks))]);
+}
+
+async function testVideoCodecs() {
+  console.log('\nCodecs de un MP4 subido');
+  const { mp4Codecs, unplayableMp4Reason, storeVideo } = await import('../src/lib/media');
+
+  check(
+    'lee el codec de un MP4 con una sola pista',
+    JSON.stringify(mp4Codecs(mp4Falso(['avc1']))) === JSON.stringify(['avc1']),
+  );
+  check(
+    'lee las dos pistas de un MP4 con video y audio',
+    JSON.stringify(mp4Codecs(mp4Falso(['avc1', 'mp4a']))) === JSON.stringify(['avc1', 'mp4a']),
+  );
+  check('no se atraganta con un archivo que no es MP4', mp4Codecs(Buffer.alloc(64)).length === 0);
+
+  check('acepta H.264', unplayableMp4Reason(mp4Falso(['avc1', 'mp4a'])) === null);
+  check('acepta AV1', unplayableMp4Reason(mp4Falso(['av01'])) === null);
+
+  const hevc = unplayableMp4Reason(mp4Falso(['hvc1', 'mp4a']));
+  check('rechaza H.265 aunque la pista de audio este bien', hevc !== null);
+  check('y explica que es H.265', hevc?.includes('H.265') ?? false, hevc ?? '');
+
+  // El orden de las pistas no puede cambiar el veredicto: en muchos archivos
+  // el audio va primero.
+  check(
+    'da igual si el audio va antes que el video',
+    unplayableMp4Reason(mp4Falso(['mp4a', 'avc1'])) === null,
+  );
+
+  // Ante la duda se acepta: rechazar un video que funciona es peor.
+  check('ante un codec desconocido no rechaza', unplayableMp4Reason(mp4Falso(['xxxx'])) === null);
+  check('ante un archivo ilegible no rechaza', unplayableMp4Reason(Buffer.alloc(64)) === null);
+
+  // Y el rechazo llega hasta quien sube el archivo.
+  const subida = await storeVideo(
+    new File([mp4Falso(['hvc1'])], 'iphone.mp4', { type: 'video/mp4' }),
+  );
+  check('no guarda un MP4 en H.265', 'error' in subida);
+
+  const buena = await storeVideo(
+    new File([mp4Falso(['avc1'])], 'fondo.mp4', { type: 'video/mp4' }),
+  );
+  check('si guarda uno en H.264', !('error' in buena));
+  if (!('error' in buena)) {
+    await prisma.mediaAsset.delete({ where: { id: buena.id } });
+  }
+}
+
 async function main() {
   console.log('Ejecutando pruebas de la tienda STARSEEKER...');
 
@@ -2008,6 +2103,7 @@ async function main() {
   await testPublicOrigin();
   await testMediaCleanup();
   await testVideoUpload();
+  await testVideoCodecs();
 
   console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
   await prisma.$disconnect();

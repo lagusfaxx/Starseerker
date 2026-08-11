@@ -79,9 +79,17 @@ mucho que se le pida lo contrario. Cuando hay un enlace incrustado, la tienda
 recorta los bordes del reproductor para que esa franja quede fuera de lo
 visible, pero con un archivo propio el problema no existe.
 
-El video se sirve por tramos (`Range`), que es lo que el navegador necesita
-para reproducirlo, saltar a un punto y reiniciar el bucle sin volver a
-descargarlo entero.
+El video se sirve **por tramos acotados**, que es lo que el navegador necesita
+para reproducirlo, saltar a un punto y reiniciar el bucle. El corte lo hace
+Postgres con `substring`, asi que una peticion mueve el pedazo pedido y no el
+archivo completo: sin eso, un fondo de 25 MB arrastra el archivo entero en cada
+una de la docena larga de peticiones que hace un reproductor, y lo que se ve es
+que el video no carga.
+
+**Codec.** Un MP4 tiene que estar en **H.264**. Los MP4 en H.265 (HEVC) —lo que
+graba un iPhone en modo "alta eficiencia" y lo que exportan varios editores por
+defecto— se rechazan al subir con un aviso, porque suben bien, se guardan bien
+y luego no se ven en ningun navegador, sin dar ningun error.
 
 **Optimizacion.** El archivo que subes se guarda tal cual y no se toca nunca.
 Lo que se optimiza es lo que viaja al navegador: la tienda pide cada foto en el

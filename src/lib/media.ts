@@ -35,10 +35,11 @@ export const ALLOWED_IMAGE_TYPES = [
  * Peso maximo de un video subido desde el panel.
  *
  * Es bastante mas alto que el de una imagen porque un video de fondo de unos
- * segundos en buena calidad no baja de varios megas, y bastante mas bajo que
- * lo que aguantaria la base porque cada peticion lee la fila entera en
- * memoria. Con 60 MB entra de sobra un fondo de 10 a 20 segundos en 1080p, que
- * es para lo que sirve esto.
+ * segundos en buena calidad no baja de varios megas. El techo no lo pone el
+ * servidor —se sirve por tramos acotados, asi que el tamano del archivo no
+ * cambia lo que ocupa una peticion— sino el visitante: 60 MB ya son bastantes
+ * datos moviles para una portada. Con eso entra de sobra un fondo de 10 a 20
+ * segundos en 1080p, que es para lo que sirve esto.
  *
  * No pasa por Server Actions —el panel lo sube por `/api/admin/media`, que no
  * tiene el tope de 1 MB del transporte— asi que aqui no hay que tocar
@@ -51,6 +52,103 @@ export const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
  * ni conversion. Un MOV o un AVI habria que recodificarlos en el servidor.
  */
 export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
+
+/**
+ * Codecs de video que los navegadores reproducen sin extensiones.
+ *
+ * La lista importa porque el problema no se ve al subir: un MP4 en H.265
+ * (HEVC) —lo que graba un iPhone en "alta eficiencia" y lo que exportan varios
+ * editores por defecto— se sube igual de bien que cualquier otro, se guarda
+ * bien y en la portada no se ve nada, sin error ni aviso, porque el navegador
+ * simplemente no sabe decodificarlo. Es mejor rechazarlo en el panel y decir
+ * que hay que exportarlo en H.264.
+ */
+const PLAYABLE_MP4_CODECS = ['avc1', 'avc3', 'vp09', 'av01'];
+
+/** Nombre legible de un codec, para poder explicar por que no sirve. */
+const CODEC_NAMES: Record<string, string> = {
+  hvc1: 'H.265 (HEVC)',
+  hev1: 'H.265 (HEVC)',
+  vp08: 'VP8',
+  mp4v: 'MPEG-4 Visual',
+};
+
+/**
+ * Lista los codecs declarados dentro de un MP4.
+ *
+ * Un MP4 es un arbol de cajas: cada una lleva su tamano y su nombre, y dentro
+ * puede haber mas. El codec de cada pista vive en
+ * `moov > trak > mdia > minf > stbl > stsd`, cuya primera entrada empieza con
+ * las cuatro letras que lo identifican ("avc1" para H.264, "hvc1" para H.265,
+ * "mp4a" para el audio).
+ *
+ * Se devuelven todas porque un archivo trae varias pistas y no hay garantia de
+ * que la de video sea la primera: quien pregunta se queda con la que le
+ * interesa. Se recorre solo esa rama, sin tocar el contenido de las pistas,
+ * asi que el trabajo no depende de cuanto pese el archivo.
+ */
+export function mp4Codecs(bytes: Buffer): string[] {
+  const found: string[] = [];
+
+  function walk(start: number, end: number, path: string[]): void {
+    let offset = start;
+
+    // Ocho bytes es lo minimo que ocupa una caja: cuatro de tamano y cuatro
+    // de nombre. Menos que eso es basura o el final.
+    while (offset + 8 <= end) {
+      const size = bytes.readUInt32BE(offset);
+      const name = bytes.toString('latin1', offset + 4, offset + 8);
+      // Tamano 0 significa "hasta el final del archivo"; 1, que el tamano real
+      // va en 64 bits despues del nombre. No se persigue ese caso: solo
+      // aparece en archivos enormes de una sola caja.
+      const length = size === 0 ? end - offset : size;
+      if (length < 8) return;
+
+      const inner = offset + 8;
+      const outer = Math.min(offset + length, end);
+
+      if (name === path[0]) {
+        if (path.length === 1) {
+          // `stsd` lleva delante una version y el numero de entradas.
+          if (inner + 16 <= outer) found.push(bytes.toString('latin1', inner + 12, inner + 16));
+        } else {
+          walk(inner, outer, path.slice(1));
+        }
+      }
+
+      offset += length;
+    }
+  }
+
+  try {
+    walk(0, bytes.length, ['moov', 'trak', 'mdia', 'minf', 'stbl', 'stsd']);
+  } catch {
+    return [];
+  }
+
+  return found;
+}
+
+/**
+ * Explica por que un MP4 no se va a poder ver, si es el caso.
+ *
+ * Ante la duda acepta: si no se reconoce ninguna pista de video —un archivo
+ * raro, una estructura que no se supo recorrer— se deja pasar, porque rechazar
+ * un video que funciona es peor que aceptar uno que quiza no se vea.
+ */
+export function unplayableMp4Reason(bytes: Buffer): string | null {
+  const codecs = mp4Codecs(bytes);
+  if (codecs.length === 0) return null;
+  if (codecs.some((codec) => PLAYABLE_MP4_CODECS.includes(codec))) return null;
+
+  const conocido = codecs.find((codec) => CODEC_NAMES[codec]);
+  if (!conocido) return null;
+
+  return (
+    `Ese MP4 esta en ${CODEC_NAMES[conocido]}, que los navegadores no reproducen. ` +
+    'Exportalo o convertilo a H.264 y volve a subirlo.'
+  );
+}
 
 export type MediaError = { error: string };
 export type MediaResult = { url: string; id: string };
@@ -133,6 +231,11 @@ export async function storeVideo(file: File): Promise<MediaResult | MediaError> 
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
+  if (file.type === 'video/mp4') {
+    const problema = unplayableMp4Reason(bytes);
+    if (problema) return { error: problema };
+  }
+
   const asset = await prisma.mediaAsset.create({
     data: {
       filename: file.name.slice(0, 200) || 'video',
@@ -156,36 +259,60 @@ export async function getImage(id: string) {
   });
 }
 
-/**
- * Devuelve un archivo tal como se subio, sin pasar por la optimizacion.
- *
- * Lo usa el servido de video, que necesita los bytes crudos para poder cortar
- * el trozo que pide el navegador.
- */
-export async function getRawAsset(
+/** Tipo y tamano, sin traer el contenido. */
+export async function getAssetMeta(
   id: string,
-): Promise<{ bytes: Buffer; mimeType: string; size: number } | null> {
-  const asset = await prisma.mediaAsset.findUnique({
+): Promise<{ mimeType: string; size: number } | null> {
+  return prisma.mediaAsset.findUnique({
     where: { id },
-    select: { bytes: true, mimeType: true, size: true },
+    select: { mimeType: true, size: true },
   });
-  if (!asset) return null;
-  return { bytes: Buffer.from(asset.bytes), mimeType: asset.mimeType, size: asset.size };
 }
 
 /**
- * Solo el tipo de un archivo subido.
+ * Un pedazo de un archivo, cortado por Postgres.
  *
- * Sirve para decidir como responder sin arrastrar los bytes: es la misma
- * consulta pero devolviendo una cadena corta en vez de varios megas.
+ * Esto es lo que hace que un video grande se pueda ver. Leer la fila entera
+ * para devolver 200 KB significa que cada peticion del reproductor arrastra el
+ * archivo completo desde la base a la memoria del servidor, y un video de
+ * fondo genera muchas peticiones: el navegador pide el principio, salta al
+ * final a buscar el indice, vuelve al principio y sigue por tramos. Con un
+ * archivo de 30 MB eso son cientos de megas movidos para reproducir unos
+ * segundos, y el resultado que se ve es que el video no carga.
+ *
+ * `substring` sobre bytea deja ese corte del lado de Postgres, asi que lo que
+ * viaja y lo que se guarda en memoria es solo el pedazo pedido. Los indices
+ * empiezan en 1, de ahi el `start + 1`.
+ *
+ * Los dos numeros van con `::int` explicito: Prisma manda cualquier numero de
+ * JavaScript como `bigint`, y no existe una version de `substring` para bytea
+ * que acepte bigint. Sin el casteo Postgres responde "function does not exist"
+ * y la peticion termina en 500.
  */
-export async function getAssetType(id: string): Promise<string | null> {
-  const asset = await prisma.mediaAsset.findUnique({
-    where: { id },
-    select: { mimeType: true },
-  });
-  return asset?.mimeType ?? null;
+export async function getAssetChunk(
+  id: string,
+  start: number,
+  length: number,
+): Promise<Buffer | null> {
+  const rows = await prisma.$queryRaw<{ chunk: Buffer | Uint8Array | null }[]>`
+    SELECT substring("bytes" FROM ${start + 1}::int FOR ${length}::int) AS chunk
+    FROM "MediaAsset"
+    WHERE "id" = ${id}
+  `;
+  const chunk = rows[0]?.chunk;
+  return chunk ? Buffer.from(chunk) : null;
 }
+
+/**
+ * Cuanto se manda como maximo en una respuesta de video.
+ *
+ * El navegador pide "de aqui hasta el final" y cumplirlo al pie de la letra
+ * seria cargar el archivo entero en memoria de una vez. Contestar un tramo mas
+ * corto es una respuesta valida —para eso existe el 206— y el reproductor pide
+ * el siguiente cuando lo necesita. Es lo mismo que hace cualquier CDN de
+ * video, y mantiene acotado lo que ocupa cada peticion.
+ */
+export const VIDEO_CHUNK_BYTES = 2 * 1024 * 1024;
 
 /**
  * Interpreta una cabecera `Range` de un solo tramo.

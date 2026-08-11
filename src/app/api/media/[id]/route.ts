@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import {
-  getAssetType,
+  VIDEO_CHUNK_BYTES,
+  getAssetChunk,
+  getAssetMeta,
   getOptimizedImage,
-  getRawAsset,
   isVideoType,
-  pickFormat,
   parseByteRange,
+  pickFormat,
   toMediaWidth,
 } from '@/lib/media';
 
@@ -37,21 +38,17 @@ export async function GET(
   }
 
   // Un video se sirve por su cuenta: no tiene versiones por ancho ni formato,
-  // y en cambio necesita responder a trozos. Se pregunta primero solo por el
-  // tipo, que es una columna corta: traer los bytes aqui significaria leer
-  // cada foto dos veces por peticion.
-  let mimeType;
+  // y en cambio necesita responder a trozos. Se pregunta primero por el tipo y
+  // el tamano, que son dos columnas cortas: traer los bytes aqui significaria
+  // leer cada foto dos veces por peticion.
+  let meta;
   try {
-    mimeType = await getAssetType(id);
+    meta = await getAssetMeta(id);
   } catch {
     return new NextResponse('Error', { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
-  if (mimeType && isVideoType(mimeType)) {
-    const video = await getRawAsset(id).catch(() => null);
-    if (!video) {
-      return new NextResponse('Error', { status: 500, headers: { 'Cache-Control': 'no-store' } });
-    }
-    return serveVideo(request, video);
+  if (meta && isVideoType(meta.mimeType)) {
+    return serveVideo(request, id, meta);
   }
 
   const width = toMediaWidth(new URL(request.url).searchParams.get('w'));
@@ -89,7 +86,7 @@ export async function GET(
 }
 
 /**
- * Sirve un video, respondiendo por trozos si el navegador los pide.
+ * Sirve un video, siempre por tramos acotados.
  *
  * Un `<video>` no se conforma con que le manden el archivo entero de una vez:
  * antes de reproducir pregunta por un trozo ("Range: bytes=0-") y espera que
@@ -97,23 +94,27 @@ export async function GET(
  * directamente no reproduce— y los demas lo necesitan para poder saltar a un
  * punto o reiniciar el bucle sin volver a descargarlo todo.
  *
- * El corte se hace sobre los bytes ya leidos: la fila entera viene de Postgres
- * en cualquier caso, asi que esto no ahorra lectura de base, solo transferencia
- * hacia el visitante y, sobre todo, hace que el video se reproduzca.
+ * Lo importante es que el corte lo hace Postgres y que el tramo tiene tope. Un
+ * video de fondo genera muchas peticiones: el principio, un salto al final a
+ * buscar el indice, otra vez el principio, y de ahi en adelante por tramos. Si
+ * cada una leyera la fila entera, un archivo de unos megas moveria cientos
+ * entre la base y el servidor para reproducir unos segundos; lo que se ve
+ * cuando eso pasa es que el video no carga.
  */
-function serveVideo(
+async function serveVideo(
   request: Request,
-  video: { bytes: Buffer; mimeType: string; size: number },
-): NextResponse {
+  id: string,
+  meta: { mimeType: string; size: number },
+): Promise<NextResponse> {
   const common = {
-    'Content-Type': video.mimeType,
+    'Content-Type': meta.mimeType,
     'Cache-Control': 'public, max-age=31536000, immutable',
     'Accept-Ranges': 'bytes',
     'Content-Disposition': 'inline',
     'X-Content-Type-Options': 'nosniff',
   };
 
-  const range = parseByteRange(request.headers.get('range'), video.size);
+  const range = parseByteRange(request.headers.get('range'), meta.size);
 
   // Un tramo que no existe se contesta como tal. Mandar el archivo entero
   // seria decirle al navegador que su peticion se cumplio, y el reproductor
@@ -121,23 +122,36 @@ function serveVideo(
   if (range === 'imposible') {
     return new NextResponse(null, {
       status: 416,
-      headers: { ...common, 'Content-Range': `bytes */${video.size}` },
+      headers: { ...common, 'Content-Range': `bytes */${meta.size}` },
     });
+  }
+
+  // Sin cabecera `Range` no hay reproductor detras, sino alguien abriendo la
+  // direccion a pelo. Ahi se manda el archivo completo, que es lo que espera.
+  const start = range ? range.start : 0;
+  const end = range
+    ? Math.min(range.end, start + VIDEO_CHUNK_BYTES - 1)
+    : meta.size - 1;
+  const length = end - start + 1;
+
+  const chunk = await getAssetChunk(id, start, length).catch(() => null);
+  if (!chunk) {
+    return new NextResponse('Error', { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 
   if (!range) {
-    return new NextResponse(new Uint8Array(video.bytes), {
-      headers: { ...common, 'Content-Length': String(video.size) },
+    return new NextResponse(new Uint8Array(chunk), {
+      headers: { ...common, 'Content-Length': String(chunk.length) },
     });
   }
 
-  const chunk = video.bytes.subarray(range.start, range.end + 1);
   return new NextResponse(new Uint8Array(chunk), {
     status: 206,
     headers: {
       ...common,
       'Content-Length': String(chunk.length),
-      'Content-Range': `bytes ${range.start}-${range.end}/${video.size}`,
+      'Content-Range': `bytes ${start}-${start + chunk.length - 1}/${meta.size}`,
     },
   });
 }
+
