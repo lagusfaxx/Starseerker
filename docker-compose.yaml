@@ -15,7 +15,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-starseeker}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Sin contrasena Postgres se niega a inicializar y el contenedor queda
+      # "unhealthy" sin decir por que. El marcador ${VAR:?} corta el despliegue
+      # antes, con el mensaje de abajo a la vista.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en las variables de entorno}
       POSTGRES_DB: ${POSTGRES_DB:-starseeker}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -24,7 +27,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 20s
+      start_period: 30s
 
   app:
     build:
@@ -36,8 +39,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-starseeker}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-starseeker}?schema=public
-      APP_URL: ${APP_URL}
-      SESSION_SECRET: ${SESSION_SECRET}
+      APP_URL: ${APP_URL:?falta APP_URL, debe ser tu dominio con https}
+      SESSION_SECRET: ${SESSION_SECRET:?falta SESSION_SECRET, generalo con openssl rand -base64 48}
       NODE_ENV: production
       PORT: 3000
 

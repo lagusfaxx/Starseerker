@@ -857,6 +857,16 @@ especificaciones y las fotos los cargas tu antes de activarlos.
 disponibles, y `503` si Postgres no responde. Docker y Coolify lo usan para
 reiniciar el contenedor si algo falla.
 
+### Si el despliegue falla
+
+| Mensaje | Que pasa |
+| --- | --- |
+| `Docker Compose file not found at: /docker-compose.yaml` | El recurso de Coolify apunta a ese nombre exacto. El archivo de este repositorio es `docker-compose.yaml` |
+| `falta POSTGRES_PASSWORD` (o `APP_URL`, o `SESSION_SECRET`) | No definiste esa variable en *Environment Variables*. Son las tres sin valor por defecto posible |
+| `dependency failed to start: container db-... is unhealthy` | Postgres no arranco. Casi siempre es `POSTGRES_PASSWORD` vacio: sin contrasena se niega a inicializar. Mira los registros del contenedor `db` para confirmarlo |
+| La tienda carga pero los enlaces de pago van a `localhost` | `APP_URL` no coincide con el dominio publico. Debe llevar `https://` y ser el mismo que asignaste en *Domains* |
+| No llega ningun correo | Faltan `RESEND_API_KEY` y `EMAIL_FROM`. La tienda funciona sin ellas, pero no envia comprobantes ni codigos de verificacion |
+
 ---
 
 ## Operar el panel
