@@ -33,10 +33,8 @@ export function Logo({
     />
   ) : (
     <span className="flex items-baseline gap-2 leading-none">
-      <span className="text-[19px] font-semibold tracking-[0.26em] sm:text-[21px]">
-        STARSEEKER
-      </span>
-      <span className="hidden text-[10px] font-medium tracking-[0.32em] text-mute sm:inline">
+      <span className="text-[17px] font-bold tracking-[0.12em] sm:text-[19px]">STARSEEKER</span>
+      <span className="hidden text-[10px] font-medium tracking-[0.22em] text-mute sm:inline">
         CHILE
       </span>
     </span>

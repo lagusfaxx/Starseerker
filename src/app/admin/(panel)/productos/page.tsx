@@ -47,7 +47,7 @@ export default async function AdminProductsPage({
           </form>
           <Link
             href="/admin/productos/nuevo"
-            className="btn btn-primary btn-sm"
+            className="btn btn-light btn-sm"
           >
             Nuevo producto
           </Link>
@@ -230,7 +230,7 @@ export default async function AdminProductsPage({
               />
               Activa
             </label>
-            <button className="btn btn-primary w-full">
+            <button className="btn btn-light w-full">
               Crear categoría
             </button>
           </form>

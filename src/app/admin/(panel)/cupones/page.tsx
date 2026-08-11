@@ -130,7 +130,7 @@ export default async function AdminCouponsPage() {
             />
             Activo
           </label>
-          <button className="btn btn-primary w-full">
+          <button className="btn btn-light w-full">
             Guardar cupón
           </button>
         </form>

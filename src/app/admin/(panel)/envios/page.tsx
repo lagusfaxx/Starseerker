@@ -163,7 +163,7 @@ function RateForm({
           />
           Activa
         </label>
-        <button className="btn btn-primary btn-sm">
+        <button className="btn btn-light btn-sm">
           {rate ? "Guardar tarifa" : "Agregar tarifa"}
         </button>
       </div>
@@ -312,7 +312,7 @@ export default async function AdminShippingPage() {
               />
               Zona activa
             </label>
-            <button className="btn btn-primary btn-sm">
+            <button className="btn btn-light btn-sm">
               Crear zona
             </button>
           </div>

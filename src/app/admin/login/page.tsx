@@ -72,7 +72,7 @@ export default async function AdminLoginPage({
 
           <button
             type="submit"
-            className="btn btn-primary w-full"
+            className="btn btn-light w-full"
           >
             Entrar
           </button>

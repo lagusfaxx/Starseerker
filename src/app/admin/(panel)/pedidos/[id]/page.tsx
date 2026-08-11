@@ -96,7 +96,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
               />
               Avisar por correo al despachar
             </label>
-            <button className="btn btn-primary w-full">
+            <button className="btn btn-light w-full">
               Guardar
             </button>
           </div>

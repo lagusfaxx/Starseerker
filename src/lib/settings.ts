@@ -16,7 +16,9 @@ export type StoreSettings = {
   freeShippingThreshold: number | null;
   heroVideoUrl: string;
   heroPosterUrl: string;
+  /** Frase en cursiva sobre el video de portada. */
   heroTitle: string;
+  /** Franja negra bajo el video. */
   heroSubtitle: string;
   heroCtaLabel: string;
   heroCtaHref: string;
@@ -40,12 +42,11 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   freeShippingThreshold: 150000,
   heroVideoUrl: "",
   heroPosterUrl: "/hero-poster.jpg",
-  heroTitle: "Explora el café sin límites",
-  heroSubtitle:
-    "Molinos y máquinas de espresso portátiles STARSEEKER. Garantía oficial y despacho a todo Chile.",
-  heroCtaLabel: "Ver colección",
+  heroTitle: "Convierte el café de especialidad en algo diario",
+  heroSubtitle: "Máquinas de espresso portátiles y molinos eléctricos",
+  heroCtaLabel: "",
   heroCtaHref: "/productos",
-  announcement: "Despacho gratis en compras sobre $150.000 · Garantía oficial en Chile",
+  announcement: "Despacho gratis sobre $150.000 · Garantía oficial en Chile",
   announcementActive: true,
   minOrderTotal: 1000,
 };

@@ -1,17 +1,15 @@
 import Link from "next/link";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { Logo } from "@/components/logo";
-import { MailIcon, PhoneIcon, PinIcon } from "@/components/icons";
 import type { StoreSettings } from "@/lib/settings";
 
 const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "Tienda",
     links: [
-      { label: "Todos los productos", href: "/productos" },
-      { label: "Molinos", href: "/coleccion/molinos" },
-      { label: "Máquinas de espresso", href: "/coleccion/maquinas-espresso" },
-      { label: "Accesorios", href: "/coleccion/accesorios" },
+      { label: "Novedades", href: "/productos?filtro=nuevos" },
+      { label: "Más vendidos", href: "/productos?filtro=mas-vendidos" },
+      { label: "Colección", href: "/productos" },
       { label: "Ofertas", href: "/productos?filtro=ofertas" },
     ],
   },
@@ -19,62 +17,44 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     title: "Ayuda",
     links: [
       { label: "Centro de ayuda", href: "/ayuda" },
-      { label: "Despachos y plazos", href: "/ayuda/despachos" },
-      { label: "Cambios y devoluciones", href: "/ayuda/devoluciones" },
-      { label: "Garantía oficial", href: "/ayuda/garantia" },
-      { label: "Medios de pago", href: "/ayuda/pagos" },
-      { label: "Seguimiento de pedido", href: "/pedido" },
+      { label: "Despachos", href: "/ayuda/despachos" },
+      { label: "Devoluciones", href: "/ayuda/devoluciones" },
+      { label: "Garantía", href: "/ayuda/garantia" },
+      { label: "Seguir mi pedido", href: "/pedido" },
     ],
   },
   {
-    title: "La empresa",
+    title: "STARSEEKER Chile",
     links: [
       { label: "Quiénes somos", href: "/nosotros" },
       { label: "Contacto", href: "/contacto" },
-      { label: "Términos y condiciones", href: "/legal/terminos" },
-      { label: "Política de privacidad", href: "/legal/privacidad" },
+      { label: "Términos", href: "/legal/terminos" },
+      { label: "Privacidad", href: "/legal/privacidad" },
     ],
   },
 ];
 
 export function SiteFooter({ settings }: { settings: StoreSettings }) {
   return (
-    <footer className="mt-24 border-t border-ink-line">
-      <div className="container-page grid gap-12 py-14 lg:grid-cols-[1.5fr_repeat(3,1fr)] lg:gap-8">
-        <div className="max-w-sm">
-          <Logo
-            logoUrl={settings.logoUrl}
-            logoHeight={settings.logoHeight}
-            storeName={settings.storeName}
-          />
-          <p className="mt-4 text-sm leading-relaxed text-mute">
-            {settings.tagline}. Importación directa, boleta o factura electrónica y garantía
-            respaldada en Chile.
-          </p>
+    <footer className="border-t border-ink-line">
+      <div className="container-page py-14 text-center">
+        <Logo
+          logoUrl={settings.logoUrl}
+          logoHeight={settings.logoHeight}
+          storeName={settings.storeName}
+          className="justify-center"
+        />
+        <p className="mx-auto mt-4 max-w-md text-sm text-mute">{settings.tagline}</p>
 
-          <ul className="mt-6 space-y-2.5 text-sm text-mute">
-            <li className="flex items-start gap-2.5">
-              <MailIcon size={16} className="mt-0.5 shrink-0" />
-              <a href={`mailto:${settings.supportEmail}`} className="link-quiet">
-                {settings.supportEmail}
-              </a>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <PhoneIcon size={16} className="mt-0.5 shrink-0" />
-              <a href={`tel:${settings.phone.replace(/\s/g, "")}`} className="link-quiet">
-                {settings.phone}
-              </a>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <PinIcon size={16} className="mt-0.5 shrink-0" />
-              <span>{settings.address}</span>
-            </li>
-          </ul>
+        <div className="mx-auto mt-9 max-w-md">
+          <NewsletterForm />
         </div>
+      </div>
 
+      <div className="container-page grid gap-10 border-t border-ink-line py-12 sm:grid-cols-3">
         {COLUMNS.map((column) => (
-          <nav key={column.title} aria-label={column.title}>
-            <h2 className="eyebrow text-bone">{column.title}</h2>
+          <nav key={column.title} aria-label={column.title} className="text-center sm:text-left">
+            <h2 className="eyebrow">{column.title}</h2>
             <ul className="mt-4 space-y-2.5 text-sm">
               {column.links.map((link) => (
                 <li key={link.href}>
@@ -89,37 +69,17 @@ export function SiteFooter({ settings }: { settings: StoreSettings }) {
       </div>
 
       <div className="border-t border-ink-line">
-        <div className="container-page grid gap-8 py-10 lg:grid-cols-[1.5fr_1fr] lg:items-center">
-          <div className="max-w-md">
-            <h2 className="eyebrow text-bone">Novedades y restock</h2>
-            <p className="mt-2 mb-4 text-sm text-mute">
-              Lanzamientos y ofertas del distribuidor oficial, sin spam.
-            </p>
-            <NewsletterForm />
-          </div>
-
-          <div className="lg:justify-self-end">
-            <h2 className="eyebrow text-bone">Medios de pago</h2>
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {["Mercado Pago", "Débito", "Crédito", "Cuotas", "Transferencia"].map((method) => (
-                <li
-                  key={method}
-                  className="border border-ink-line px-3 py-1.5 text-[11px] text-mute"
-                >
-                  {method}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-ink-line">
-        <div className="container-page flex flex-col gap-2 py-6 text-[11px] text-mute sm:flex-row sm:items-center sm:justify-between">
+        <div className="container-page flex flex-col items-center gap-2 py-6 text-[11px] text-mute sm:flex-row sm:justify-between">
           <p>
-            © {new Date().getFullYear()} {settings.storeName}. Todos los derechos reservados.
+            © {new Date().getFullYear()} {settings.storeName}
           </p>
-          <p>Precios en pesos chilenos con IVA incluido.</p>
+          <p>
+            <a href={`mailto:${settings.supportEmail}`} className="link-quiet">
+              {settings.supportEmail}
+            </a>
+            <span className="mx-2">·</span>
+            Pagos con Mercado Pago
+          </p>
         </div>
       </div>
     </footer>

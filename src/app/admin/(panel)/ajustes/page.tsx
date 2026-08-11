@@ -133,7 +133,7 @@ export default async function AdminSettingsPage() {
           </div>
         </section>
 
-        <button className="btn btn-primary">
+        <button className="btn btn-light">
           Guardar ajustes
         </button>
       </form>

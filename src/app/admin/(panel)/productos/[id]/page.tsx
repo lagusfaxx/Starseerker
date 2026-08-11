@@ -243,7 +243,7 @@ export default async function AdminProductForm({ params }: { params: Promise<{ i
         </section>
 
         <div className="flex items-center gap-4">
-          <button className="btn btn-primary">
+          <button className="btn btn-light">
             {isNew ? "Crear producto" : "Guardar cambios"}
           </button>
           <Link href="/admin/productos" className="text-xs text-mute hover:text-bone">
