@@ -425,20 +425,29 @@ export default async function HomePage() {
         vacio, se arma solo con el catalogo.
       */}
       <section className="border-t border-sand-dark bg-black">
-        <div className="container-site py-16">
-          <h1 className="max-w-3xl font-display text-3xl font-bold uppercase leading-tight tracking-tight sm:text-4xl">
+        <div className="container-site py-12 sm:py-16">
+          {/*
+            En un telefono este titular es el bloque de texto mas grande de la
+            portada y va en versalitas: a 30 px, con nombres de producto
+            largos, ocupaba media pantalla. Baja a 22 y sube con el ancho.
+            `text-balance` reparte las lineas para que no quede una sola
+            palabra colgando al final.
+          */}
+          <h1 className="max-w-3xl text-balance font-display text-[22px] font-bold uppercase leading-tight tracking-tight sm:text-3xl lg:text-4xl">
             {seo.heading}
           </h1>
-          <p className="mt-6 max-w-3xl text-[15px] leading-relaxed text-ink-soft">{seo.text}</p>
+          <p className="mt-5 max-w-3xl text-sm leading-relaxed text-ink-soft sm:mt-6 sm:text-[15px]">
+            {seo.text}
+          </p>
 
           {seoNames.products.length > 0 ? (
-            <nav aria-label="Productos de la tienda" className="mt-8">
-              <ul className="flex flex-wrap gap-2">
+            <nav aria-label="Productos de la tienda" className="mt-7 sm:mt-8">
+              <ul className="flex flex-wrap gap-1.5 sm:gap-2">
                 {seoNames.products.map((product) => (
                   <li key={product.slug}>
                     <Link
                       href={`/products/${product.slug}`}
-                      className="inline-block border border-sand-dark px-4 py-2 text-sm transition-colors hover:border-ink hover:text-brand"
+                      className="inline-block border border-sand-dark px-3 py-1.5 text-xs transition-colors hover:border-ink hover:text-brand sm:px-4 sm:py-2 sm:text-sm"
                     >
                       {product.name}
                     </Link>

@@ -2243,6 +2243,67 @@ async function testBannerTone() {
   check('y el boton se invierte', sobreBlanco.cta === 'btn-invert');
 }
 
+async function testHomeSeoNames() {
+  console.log('\nTexto automatico de la portada');
+  const { buildHomeSeo } = await import('../src/lib/home-seo');
+
+  const base = {
+    storeName: 'STARSEEKER',
+    brand: null,
+    seoTitle: null,
+    seoHeading: null,
+    seoText: null,
+    metaDescription: null,
+    collectionNames: ['Molinos de cafe', 'Accesorios'],
+  };
+
+  // El catalogo repite la marca en cada modelo, que es lo normal en una ficha
+  // pero deja un titular con la palabra tres veces.
+  const seo = buildHomeSeo({
+    ...base,
+    productNames: ['STARSEEKER S58 Pro', 'Starseeker S58 PRO', 'Starseeker S58', 'STARSEEKER EDGE63'],
+  });
+
+  check(
+    'no repite la marca en cada modelo',
+    seo.heading === 'STARSEEKER: S58 Pro, S58, EDGE63',
+    seo.heading,
+  );
+  check(
+    'ni deja dos veces el mismo modelo',
+    (seo.text.match(/S58 Pro/gi) ?? []).length === 1,
+    seo.text,
+  );
+  check('el texto nombra las colecciones', seo.text.includes('Molinos de cafe'));
+
+  // Con marca declarada se quita esa y tambien el nombre de la tienda.
+  const conMarca = buildHomeSeo({
+    ...base,
+    storeName: 'Cafe Austral',
+    brand: 'STARSEEKER',
+    productNames: ['STARSEEKER S58', 'Cafe Austral EDGE63'],
+  });
+  check('quita la marca declarada', conMarca.heading === 'STARSEEKER Chile: S58, EDGE63', conMarca.heading);
+
+  // Un producto que se llama igual que la marca no puede quedar sin nombre.
+  const soloMarca = buildHomeSeo({ ...base, productNames: ['STARSEEKER'] });
+  check('un producto llamado como la marca conserva su nombre', soloMarca.heading.includes('STARSEEKER'));
+
+  // Lo que escriba el propietario manda siempre.
+  const propio = buildHomeSeo({
+    ...base,
+    seoHeading: 'Mi titular',
+    seoText: 'Mi texto',
+    productNames: ['STARSEEKER S58'],
+  });
+  check('respeta el titular escrito a mano', propio.heading === 'Mi titular');
+  check('y el texto escrito a mano', propio.text === 'Mi texto');
+
+  // Sin catalogo la portada sigue teniendo algo que decir.
+  const vacia = buildHomeSeo({ ...base, productNames: [] });
+  check('sin productos igual arma un titular', vacia.heading.length > 0, vacia.heading);
+}
+
 async function main() {
   console.log('Ejecutando pruebas de la tienda STARSEEKER...');
 
@@ -2271,6 +2332,7 @@ async function main() {
   await testVideoEmbeds();
   await testMarquee();
   await testBannerTone();
+  await testHomeSeoNames();
 
   console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
   await prisma.$disconnect();

@@ -35,6 +35,49 @@ export type HomeSeo = {
   text: string;
 };
 
+/**
+ * Quita de un nombre de producto la marca o el nombre de la tienda.
+ *
+ * Los catalogos suelen repetir la marca en cada modelo ("Starseeker S58",
+ * "Starseeker S58 Pro"), lo cual esta bien en la ficha pero no en una frase que
+ * ya empieza por la marca: el titular terminaba siendo "STARSEEKER: S58 PRO,
+ * STARSEEKER S58 PRO, STARSEEKER S58", con la palabra tres veces y ocupando
+ * cuatro lineas en un telefono.
+ *
+ * Si al quitarla no queda nada —un producto que se llama igual que la marca—
+ * se devuelve el nombre entero, que es mejor que una entrada vacia.
+ */
+function sinMarca(nombre: string, marcas: string[]): string {
+  let limpio = nombre.trim();
+
+  for (const marca of marcas) {
+    if (!marca) continue;
+    const escapada = marca.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    limpio = limpio.replace(new RegExp(`\\b${escapada}\\b`, 'gi'), ' ');
+  }
+
+  limpio = limpio.replace(/\s+/g, ' ').replace(/^[\s:,-]+|[\s:,-]+$/g, '');
+  return limpio || nombre.trim();
+}
+
+/**
+ * Deja una sola version de cada nombre.
+ *
+ * Despues de quitar la marca quedan repetidos ("Starseeker S58" y "S58" son la
+ * misma palabra), y una lista que dice dos veces lo mismo se lee como un error.
+ * La comparacion ignora mayusculas, espacios y signos.
+ */
+function unicos(nombres: string[]): string[] {
+  const vistos = new Set<string>();
+
+  return nombres.filter((nombre) => {
+    const clave = nombre.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!clave || vistos.has(clave)) return false;
+    vistos.add(clave);
+    return true;
+  });
+}
+
 /** Une una lista en castellano: "a, b y c". */
 function listar(items: string[]): string {
   const limpio = items.map((item) => item.trim()).filter(Boolean);
@@ -44,9 +87,16 @@ function listar(items: string[]): string {
 }
 
 export function buildHomeSeo(input: HomeSeoInput): HomeSeo {
-  const productos = input.productNames.filter(Boolean).slice(0, 5);
-  const colecciones = input.collectionNames.filter(Boolean).slice(0, 3);
   const marca = input.brand?.trim() || null;
+
+  // Se quitan la marca y el nombre de la tienda de cada modelo antes de
+  // nombrarlos, porque la frase ya empieza por ahi.
+  const productos = unicos(
+    input.productNames
+      .filter(Boolean)
+      .map((nombre) => sinMarca(nombre, [marca ?? '', input.storeName])),
+  ).slice(0, 5);
+  const colecciones = input.collectionNames.filter(Boolean).slice(0, 3);
 
   // Con marca declarada manda ella, porque es la palabra que se busca: quien
   // no conoce la tienda busca la marca, no el nombre del negocio.
