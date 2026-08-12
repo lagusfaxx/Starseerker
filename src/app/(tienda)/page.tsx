@@ -354,23 +354,45 @@ export default async function HomePage() {
             <h2 className="section-title">{settings.collectionsTitle}</h2>
           </div>
         </div>
-        <div className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto border-t border-sand-dark sm:grid sm:grid-cols-2 sm:overflow-x-visible xl:grid-cols-4">
+        {/*
+          Las columnas siguen a cuantas categorias haya. Con cuatro fijas y
+          tres categorias quedaba un rectangulo negro al final de la fila, que
+          no se lee como "aqui no hay nada" sino como algo que fallo.
+        */}
+        <div
+          className={`no-scrollbar flex snap-x snap-mandatory overflow-x-auto border-t border-sand-dark sm:grid sm:overflow-x-visible ${
+            collections.length === 3
+              ? 'sm:grid-cols-3'
+              : collections.length <= 1
+                ? 'sm:grid-cols-1'
+                : 'sm:grid-cols-2 xl:grid-cols-4'
+          }`}
+        >
           {collections.map((collection) => (
             <Link
               key={collection.id}
               href={`/coleccion/${collection.slug}`}
               className="group flex w-[78%] shrink-0 snap-start flex-col border-b border-r border-sand-dark bg-sand p-8 transition-colors hover:bg-black sm:w-auto"
             >
-              {/* Altura fija en el icono para que todos los titulos queden
-                  alineados, aunque una descripcion ocupe dos lineas. */}
-              <div className="flex h-[11.9rem] items-center justify-center">
+              {/*
+                El hueco de la foto crece con la tarjeta en vez de medir
+                siempre lo mismo.
+
+                Antes eran 8,5 rem fijos dentro de un hueco de 11,9: en una
+                pantalla ancha la tarjeta pasa de los 400 px y la foto se
+                quedaba en 136, perdida en medio de un rectangulo negro. La
+                altura sigue siendo igual para todas las tarjetas de la fila,
+                que es lo que mantiene los titulos alineados aunque una
+                descripcion ocupe dos lineas.
+              */}
+              <div className="flex h-52 items-center justify-center sm:h-64 lg:h-72">
                 {collection.image ? (
                   <MediaImage
                     src={collection.image}
                     alt=""
                     aria-hidden="true"
-                    sizes="320px"
-                    className="h-[8.5rem] w-[8.5rem] object-contain transition-transform duration-500 group-hover:scale-105"
+                    sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 78vw"
+                    className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : null}
               </div>
