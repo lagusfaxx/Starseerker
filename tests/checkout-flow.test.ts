@@ -2302,6 +2302,31 @@ async function testHomeSeoNames() {
   // Sin catalogo la portada sigue teniendo algo que decir.
   const vacia = buildHomeSeo({ ...base, productNames: [] });
   check('sin productos igual arma un titular', vacia.heading.length > 0, vacia.heading);
+
+  // El titular va en versalitas y a cuerpo grande: con nombres largos ocupaba
+  // seis lineas en un telefono, que es lo primero que se ve al bajar.
+  const largos = buildHomeSeo({
+    ...base,
+    productNames: [
+      'STARSEEKER EDGE63 Electric Coffee Grinder',
+      'STARSEEKER EDGEMini Electric Portable Coffee Grinder',
+      'STARSEEKER Go50 Electric Portable Coffee Grinder',
+    ],
+  });
+  check('no deja crecer el titular sin limite', largos.heading.length <= 85, largos.heading);
+  check(
+    'y con nombres largos nombra menos productos',
+    largos.heading.split(',').length < 3,
+    largos.heading,
+  );
+
+  // Pero con nombres cortos siguen cabiendo tres.
+  const cortos = buildHomeSeo({ ...base, productNames: ['S58', 'EDGE63', 'Go50', 'Super58'] });
+  check('con nombres cortos caben varios', cortos.heading.split(',').length >= 3, cortos.heading);
+
+  // Y uno solo, aunque no quepa, es mejor que ninguno.
+  const gigante = buildHomeSeo({ ...base, productNames: ['A'.repeat(120)] });
+  check('siempre nombra al menos un producto', gigante.heading.includes('A'.repeat(120)));
 }
 
 async function main() {

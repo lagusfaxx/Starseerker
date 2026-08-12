@@ -64,7 +64,11 @@ export function ProductCard({
 
           <div className="absolute left-4 top-4 flex flex-col items-start gap-2">
             {product.isNew ? <span className="badge bg-ink text-black">Nuevo</span> : null}
-            {hasDiscount ? <span className="badge bg-brand text-black">Oferta</span> : null}
+            {/* Un producto agotado no anuncia su descuento: dos etiquetas que
+                se contradicen, y la que importa es que no se puede comprar. */}
+            {hasDiscount && !soldOut ? (
+              <span className="badge bg-brand text-black">Oferta</span>
+            ) : null}
             {/* Sin stock pero con reposicion en camino, se anuncia la espera en
                 lugar del agotado: dice lo mismo sin cerrar la puerta. */}
             {soldOut && product.incoming ? (

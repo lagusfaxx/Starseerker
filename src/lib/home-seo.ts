@@ -78,6 +78,36 @@ function unicos(nombres: string[]): string[] {
   });
 }
 
+/**
+ * Cuanto puede ocupar el titular de la portada.
+ *
+ * Va en versalitas y a cuerpo grande, asi que cada caracter cuenta: con tres
+ * nombres largos —"EDGE63 Electric Coffee Grinder" y compania— ocupaba tres
+ * lineas en escritorio y seis en un telefono, que es lo primero que se ve al
+ * bajar. Con este tope entran los que quepan y se paran ahi.
+ */
+const HEADING_BUDGET = 70;
+
+/**
+ * Los nombres que caben en el presupuesto, sin cortar ninguno por la mitad.
+ *
+ * Siempre devuelve al menos uno: un titular con la marca y nada mas se lee
+ * como si faltara algo, y un nombre largo de mas es mejor que ninguno.
+ */
+function cabenEn(nombres: string[], presupuesto: number): string[] {
+  const elegidos: string[] = [];
+  let usado = 0;
+
+  for (const nombre of nombres) {
+    const coste = nombre.length + (elegidos.length > 0 ? 2 : 0);
+    if (elegidos.length > 0 && usado + coste > presupuesto) break;
+    elegidos.push(nombre);
+    usado += coste;
+  }
+
+  return elegidos;
+}
+
 /** Une una lista en castellano: "a, b y c". */
 function listar(items: string[]): string {
   const limpio = items.map((item) => item.trim()).filter(Boolean);
@@ -121,7 +151,7 @@ export function buildHomeSeo(input: HomeSeoInput): HomeSeo {
   const encabezado =
     input.seoHeading?.trim() ||
     (productos.length > 0
-      ? `${quien}: ${productos.slice(0, 3).join(', ')}`
+      ? `${quien}: ${cabenEn(productos, HEADING_BUDGET - quien.length - 2).join(', ')}`
       : `${quien}, equipos de cafe`);
 
   const texto =

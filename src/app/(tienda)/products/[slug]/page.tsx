@@ -106,8 +106,27 @@ export default async function ProductPage({ params }: PageProps) {
     priceLabel: formatMoney(toDecimal(product.price).plus(toDecimal(variant.priceDelta))),
   }));
 
-  const specs = (product.specs ?? {}) as Record<string, string>;
-  const specEntries = Object.entries(specs).filter(([, value]) => typeof value === 'string');
+  /*
+   * Las especificaciones se guardan como JSON libre, asi que pueden llegar
+   * como pares ("Peso": "3,5 kg") o como una lista suelta, segun de donde
+   * salgan: un respaldo antiguo, una importacion o una edicion directa a la
+   * base. Con `Object.entries` sobre una lista las etiquetas salian siendo
+   * 0, 1, 2 y 3, que en la ficha se lee como un error.
+   *
+   * Una lista se muestra sin etiquetas, que es lo que es. Los pares siguen
+   * mostrandose a dos columnas.
+   */
+  const specsRaw = product.specs ?? {};
+  const specsAsList = Array.isArray(specsRaw);
+  const specEntries = specsAsList
+    ? []
+    : Object.entries(specsRaw as Record<string, unknown>).filter(
+        ([, value]) => typeof value === 'string',
+      );
+  const specList = specsAsList
+    ? (specsRaw as unknown[]).filter((value): value is string => typeof value === 'string')
+    : [];
+  const hasSpecs = specEntries.length > 0 || specList.length > 0;
 
   const [store, reviewSummary, reviews, pickupSettings, policies] = await Promise.all([
     getStoreSettings(),
@@ -350,11 +369,20 @@ export default async function ProductPage({ params }: PageProps) {
         </div>
       </div>
 
-      {product.features.length > 0 || specEntries.length > 0 ? (
+      {product.features.length > 0 || hasSpecs ? (
         <section className="border-t border-sand-dark bg-sand">
-          <div className="container-site grid gap-12 py-16 lg:grid-cols-2">
+          {/*
+            Dos columnas solo si de verdad hay dos bloques. Con uno solo, la
+            rejilla lo dejaba en la mitad izquierda y la otra mitad vacia, que
+            se lee como si faltara contenido.
+          */}
+          <div
+            className={`container-site grid gap-12 py-16 ${
+              product.features.length > 0 && hasSpecs ? 'lg:grid-cols-2' : ''
+            }`}
+          >
             {product.features.length > 0 ? (
-              <div>
+              <div className="max-w-2xl">
                 <h2 className="section-title">Caracteristicas</h2>
                 <ul className="mt-6 space-y-4">
                   {product.features.map((feature) => (
@@ -367,19 +395,29 @@ export default async function ProductPage({ params }: PageProps) {
               </div>
             ) : null}
 
-            {specEntries.length > 0 ? (
-              <div>
+            {hasSpecs ? (
+              <div className="max-w-2xl">
                 <h2 className="section-title">Especificaciones</h2>
-                <dl className="mt-6 divide-y divide-sand-dark border-y border-sand-dark">
-                  {specEntries.map(([key, value]) => (
-                    <div key={key} className="flex justify-between gap-6 py-3.5">
-                      <dt className="font-display text-xs font-semibold uppercase tracking-widest text-ink-muted">
-                        {key}
-                      </dt>
-                      <dd className="text-right text-sm text-ink">{value}</dd>
-                    </div>
-                  ))}
-                </dl>
+                {specEntries.length > 0 ? (
+                  <dl className="mt-6 divide-y divide-sand-dark border-y border-sand-dark">
+                    {specEntries.map(([key, value]) => (
+                      <div key={key} className="flex justify-between gap-6 py-3.5">
+                        <dt className="font-display text-xs font-semibold uppercase tracking-widest text-ink-muted">
+                          {key}
+                        </dt>
+                        <dd className="text-right text-sm text-ink">{String(value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <ul className="mt-6 divide-y divide-sand-dark border-y border-sand-dark">
+                    {specList.map((value) => (
+                      <li key={value} className="py-3.5 text-sm text-ink">
+                        {value}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ) : null}
           </div>

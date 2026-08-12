@@ -179,7 +179,13 @@ export function SiteHeader({
                 className="flex items-center gap-2 border-l border-sand-dark px-5 font-display text-sm font-semibold uppercase tracking-widest text-ink transition-colors hover:text-brand"
               >
                 <UserIcon className="h-5 w-5" />
-                <span className="hidden md:inline">{userName ? userName.split(' ')[0] : 'Cuenta'}</span>
+                {/*
+                  Las etiquetas solo desde `lg`, que es donde el logo deja de
+                  ir centrado en la pantalla. Antes aparecian en tablet y ahi
+                  el logo, que se centra contra el ancho completo, llegaba a
+                  tocar el icono de buscar.
+                */}
+                <span className="hidden lg:inline">{userName ? userName.split(' ')[0] : 'Cuenta'}</span>
                 <ChevronDownIcon
                   className={`h-4 w-4 transition-transform ${openMenu === 'account' ? 'rotate-180' : ''}`}
                 />
@@ -227,7 +233,7 @@ export function SiteHeader({
                   </span>
                 ) : null}
               </span>
-              <span className="hidden md:inline">Carrito</span>
+              <span className="hidden lg:inline">Carrito</span>
             </Link>
           </div>
         </div>
