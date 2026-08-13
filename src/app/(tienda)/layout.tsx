@@ -20,6 +20,10 @@ import { WhatsappButton } from '@/components/whatsapp-button';
 // no puede cachearse de forma estatica.
 export const dynamic = 'force-dynamic';
 
+// Token de propiedad de Google Search Console. Next lo renderiza como
+// <meta name="google-site-verification" ...> en el <head> de la tienda.
+const GOOGLE_SITE_VERIFICATION = 'WHqTZkOSjvTRxmEh8gkHlTHR31eN_IN-Bf5YqTVe7e0';
+
 /**
  * Los metadatos base salen de los ajustes de la tienda, no de constantes: el
  * propietario cambia el nombre o la descripcion desde el panel y se refleja en
@@ -44,6 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: settings.metaDescription,
     },
     robots: { index: true, follow: true },
+    verification: { google: GOOGLE_SITE_VERIFICATION },
   };
 }
 
