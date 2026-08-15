@@ -40,7 +40,14 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-starseeker}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-starseeker}?schema=public
       APP_URL: ${APP_URL:?falta APP_URL, debe ser tu dominio con https}
-      SESSION_SECRET: ${SESSION_SECRET:?falta SESSION_SECRET, generalo con openssl rand -base64 48}
+      # El mensaje de este marcador va sin guiones ni signos igual a proposito.
+      # Coolify escanea este archivo para autocompletar sus "Environment
+      # Variables" y el texto del ${VAR:?...} entra en ese escaneo: cuando el
+      # mensaje contenia "openssl rand -base64 48", el guion hacia que pareciera
+      # un par clave=valor y quedaba dado de alta como variable basura
+      # ("SESSION_SECRET:?falta_SESSION_SECRET,_...=base64 48"), una copia nueva
+      # por cada despliegue. El comando exacto vive en .env.example.
+      SESSION_SECRET: ${SESSION_SECRET:?falta SESSION_SECRET, mira .env.example para generarlo}
       NODE_ENV: production
       PORT: 3000
 
