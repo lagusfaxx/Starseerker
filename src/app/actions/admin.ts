@@ -31,6 +31,7 @@ import {
   collectionSchema,
   couponSchema,
   fieldErrors,
+  googleVerificationCode,
   orderUpdateSchema,
   menuItemSchema,
   productSchema,
@@ -1626,6 +1627,10 @@ export async function saveSettings(_prev: AdminState, formData: FormData): Promi
     'store.seoTitle': String(formData.get('seoTitle') ?? '').trim().slice(0, 70),
     'store.seoHeading': String(formData.get('seoHeading') ?? '').trim().slice(0, 120),
     'store.seoText': String(formData.get('seoText') ?? '').trim().slice(0, 900),
+    // Codigo de Search Console. Se acepta pegado como etiqueta completa o
+    // solo el codigo, porque Google muestra las dos formas y no hay razon para
+    // que el propietario tenga que saber cual es cual.
+    'store.googleVerification': googleVerificationCode(formData.get('googleVerification')),
     // Encabezados de las dos tiras de la portada. Vacio deja el de siempre.
     'store.featuredTitle': String(formData.get('featuredTitle') ?? '').trim().slice(0, 40),
     'store.collectionsTitle': String(formData.get('collectionsTitle') ?? '').trim().slice(0, 40),

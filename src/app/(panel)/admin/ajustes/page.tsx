@@ -59,6 +59,7 @@ export default async function AdminSettingsPage() {
               announcement={store.announcement ?? ''}
               featuredTitle={store.featuredTitle}
               collectionsTitle={store.collectionsTitle}
+              googleVerification={store.googleVerification ?? ''}
               marquee={store.marquee.join('\n')}
               heroHeadline={store.heroHeadline ?? ''}
               metaDescription={store.metaDescription}
@@ -95,8 +96,8 @@ export default async function AdminSettingsPage() {
               />
               <Row
                 label="Access token"
-                value={env.mpAccessToken ? 'Configurado' : 'Falta configurar'}
-                badge={env.mpAccessToken ? 'ok' : 'error'}
+                value={env.mpConfigured ? 'Configurado' : 'Falta configurar'}
+                badge={env.mpConfigured ? 'ok' : 'error'}
               />
               <Row
                 label="Clave secreta del webhook"

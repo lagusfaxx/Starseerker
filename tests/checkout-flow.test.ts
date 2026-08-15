@@ -2329,6 +2329,46 @@ async function testHomeSeoNames() {
   check('siempre nombra al menos un producto', gigante.heading.includes('A'.repeat(120)));
 }
 
+async function testGoogleVerification() {
+  console.log('\nVerificacion de Google Search Console');
+  const { getStoreSettings } = await import('../src/lib/store-settings');
+  const { googleVerificationCode } = await import('../src/lib/validation');
+
+  const CODIGO = 'WHqTZkOSjvTRxmEh8gkHlTHR31eN_IN-Bf5YqTVe7e0';
+
+  // Google entrega el dato de dos formas y no avisa de que son la misma.
+  async function guardar(valor: string) {
+    await prisma.setting.upsert({
+      where: { key: 'store.googleVerification' },
+      update: { value: valor },
+      create: { key: 'store.googleVerification', value: valor },
+    });
+    return (await getStoreSettings()).googleVerification;
+  }
+
+  check('guarda el codigo suelto', (await guardar(CODIGO)) === CODIGO);
+  check('vacio no publica ninguna etiqueta', (await guardar('')) === null);
+
+  // Sin nada guardado se usa el token de la propiedad ya verificada: este
+  // ajuste nacio de una etiqueta que estaba fija en el codigo, y estrenarlo no
+  // puede desverificar una tienda que ya funcionaba.
+  await prisma.setting.deleteMany({ where: { key: 'store.googleVerification' } });
+  check('sin configurar conserva la propiedad verificada', (await getStoreSettings()).googleVerification === CODIGO);
+
+  // Y lo que llega del formulario, que es donde se limpia.
+  check(
+    'acepta la etiqueta entera y se queda con el codigo',
+    googleVerificationCode(`<meta name="google-site-verification" content="${CODIGO}" />`) === CODIGO,
+  );
+  check('acepta comillas simples', googleVerificationCode(`<meta content='${CODIGO}'>`) === CODIGO);
+  check('acepta el codigo pelado', googleVerificationCode(CODIGO) === CODIGO);
+  check('un campo vacio no guarda nada', googleVerificationCode('') === '');
+  check('descarta lo que no es un codigo', googleVerificationCode('esto no es <script>') === '');
+  check('descarta un codigo demasiado corto', googleVerificationCode('abc') === '');
+
+  await prisma.setting.deleteMany({ where: { key: 'store.googleVerification' } });
+}
+
 async function main() {
   console.log('Ejecutando pruebas de la tienda STARSEEKER...');
 
@@ -2358,6 +2398,7 @@ async function main() {
   await testMarquee();
   await testBannerTone();
   await testHomeSeoNames();
+  await testGoogleVerification();
 
   console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
   await prisma.$disconnect();

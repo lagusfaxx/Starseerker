@@ -12,6 +12,7 @@ export function SettingsForm({
   announcement,
   featuredTitle,
   collectionsTitle,
+  googleVerification,
   marquee,
   heroHeadline,
   metaDescription,
@@ -25,6 +26,7 @@ export function SettingsForm({
   announcement: string;
   featuredTitle: string;
   collectionsTitle: string;
+  googleVerification: string;
   marquee: string;
   heroHeadline: string;
   metaDescription: string;
@@ -244,6 +246,26 @@ export function SettingsForm({
             Encabeza la cuadricula de categorias, mas abajo en la portada.
           </p>
         </div>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="googleVerification">
+          Verificacion de Google Search Console
+        </label>
+        <input
+          id="googleVerification"
+          name="googleVerification"
+          defaultValue={googleVerification}
+          maxLength={200}
+          className="field"
+          placeholder="WHqTZkOSjvTRxmEh8gkHlTHR31eN_IN-Bf5YqTVe7e0"
+        />
+        <p className="mt-1.5 text-xs text-ink-muted">
+          El codigo que da Google al agregar la propiedad por el metodo de la etiqueta HTML.
+          Puedes pegar la etiqueta entera o solo el codigo, da lo mismo. Se publica en todas
+          las paginas; una vez verificada la propiedad puedes dejarlo puesto, Google lo revisa
+          cada tanto.
+        </p>
       </div>
 
       <div>

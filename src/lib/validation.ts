@@ -354,3 +354,26 @@ export function slugify(input: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 120);
 }
+
+/**
+ * Deja solo el codigo de verificacion de Google Search Console.
+ *
+ * Google ofrece el dato de dos formas y no avisa de que son la misma: la
+ * etiqueta entera para pegar en el `<head>` y, mas abajo, el codigo suelto.
+ * Quien copia la etiqueta completa y la pega aqui tendria dos etiquetas
+ * anidadas y la verificacion fallaria sin decir por que, asi que se acepta
+ * cualquiera de las dos y se guarda siempre el codigo.
+ */
+export function googleVerificationCode(value: FormDataEntryValue | null): string {
+  const texto = String(value ?? '').trim();
+  if (!texto) return '';
+
+  // Pegado como etiqueta: se saca lo que hay en `content`.
+  const enEtiqueta = texto.match(/content=["']([^"']+)["']/i);
+  const codigo = (enEtiqueta?.[1] ?? texto).trim();
+
+  // El codigo de Google es una cadena sin espacios ni signos raros; si llega
+  // otra cosa es que se pego algo que no era, y se descarta antes de escribir
+  // una etiqueta rota en todas las paginas.
+  return /^[A-Za-z0-9_-]{20,100}$/.test(codigo) ? codigo : '';
+}

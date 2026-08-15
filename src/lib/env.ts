@@ -54,6 +54,18 @@ export const env = {
     return requireVar('MP_ACCESS_TOKEN');
   },
   /**
+   * Si el cobro esta configurado, sin exigirlo.
+   *
+   * `mpAccessToken` lanza cuando falta, que es lo correcto en el momento de
+   * cobrar: mejor un error claro que una compra a medias. Pero el panel de
+   * ajustes existe justo para avisar de que falta, y preguntarselo con el
+   * getter que lanza tumbaba la pagina entera con un 500: la fila decia
+   * "Falta configurar" y no llegaba a dibujarse nunca.
+   */
+  get mpConfigured() {
+    return read('MP_ACCESS_TOKEN') !== '';
+  },
+  /**
    * Clave del webhook, limpiada de lo que sobra al pegarla.
    *
    * Un salto de linea o unas comillas alrededor no se ven en el panel del

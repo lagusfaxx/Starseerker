@@ -83,11 +83,22 @@ export type StoreSettings = {
   featuredTitle: string;
   /** Titulo de la tira de colecciones de la portada. */
   collectionsTitle: string;
+  /** Codigo de verificacion de Google Search Console. Vacio = sin etiqueta. */
+  googleVerification: string | null;
 };
 
 /** Titulos de las dos tiras de la portada, si el propietario no pone otros. */
 export const DEFAULT_FEATURED_TITLE = 'Mas vendidos';
 export const DEFAULT_COLLECTIONS_TITLE = 'Colecciones';
+
+/**
+ * Token de Google Search Console de la propiedad ya verificada.
+ *
+ * Es el que se declaraba fijo en el layout antes de que esto fuera un ajuste.
+ * Se conserva como valor inicial para no desverificar la tienda al desplegar,
+ * y deja de usarse en cuanto se guarda algo en el panel.
+ */
+const DEFAULT_GOOGLE_VERIFICATION = 'WHqTZkOSjvTRxmEh8gkHlTHR31eN_IN-Bf5YqTVe7e0';
 
 /** Mensajes por defecto de la cinta, editables desde el panel. */
 const DEFAULT_MARQUEE = [
@@ -117,6 +128,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
             'store.seoText',
             'store.featuredTitle',
             'store.collectionsTitle',
+            'store.googleVerification',
             LOGO_SETTING_KEY,
             SECONDARY_LOGO_SETTING_KEY,
             SECONDARY_LOGO_ALT_SETTING_KEY,
@@ -133,6 +145,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 
   const map = new Map(rows.map((row) => [row.key, row.value]));
   const rawMarquee = map.get('store.marquee');
+  const rawGoogle = map.get('store.googleVerification');
 
   return {
     name: map.get('store.name') || env.storeName,
@@ -151,6 +164,15 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     // encabezado se lee como una fila de tarjetas sueltas.
     featuredTitle: map.get('store.featuredTitle') || DEFAULT_FEATURED_TITLE,
     collectionsTitle: map.get('store.collectionsTitle') || DEFAULT_COLLECTIONS_TITLE,
+    /*
+     * Igual que la cinta: "no hay nada guardado" y "se guardo vacio" son cosas
+     * distintas. Sin la clave se usa el token de la propiedad ya verificada,
+     * para que este cambio no desverifique una tienda en marcha; con la clave
+     * guardada vacia no se publica ninguna etiqueta, que es lo que se esta
+     * pidiendo al borrar el campo.
+     */
+    googleVerification:
+      rawGoogle === undefined ? DEFAULT_GOOGLE_VERIFICATION : rawGoogle.trim() || null,
     logoUrl: map.get(LOGO_SETTING_KEY) || null,
     secondaryLogoUrl: map.get(SECONDARY_LOGO_SETTING_KEY) || null,
     secondaryLogoAlt: map.get(SECONDARY_LOGO_ALT_SETTING_KEY) || '',
