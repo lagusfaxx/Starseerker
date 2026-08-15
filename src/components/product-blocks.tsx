@@ -279,21 +279,32 @@ function BlockVideo({ block }: { block: ProductBlockData }) {
   const video = toBannerVideo(block.video);
   if (!video) return null;
 
+  /*
+   * El tamano limita cuanto se estira el video a lo ancho.
+   *
+   * Antes ocupaba siempre el ancho completo de la pantalla, sin forma de
+   * cambiarlo: en un monitor son mas de mil pixeles de video y se come la
+   * pagina. `mx-auto` lo centra dentro de la franja cuando no la llena.
+   */
+  const ancho = `mx-auto w-full ${BLOCK_IMAGE_SIZE_CLASS.video[block.imageSize]}`;
+
   if (video.kind === 'file') {
     return (
-      <video
-        aria-hidden="true"
-        tabIndex={-1}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        poster={block.image || undefined}
-        className="pointer-events-none aspect-video w-full bg-black object-cover"
-      >
-        <source src={video.src} />
-      </video>
+      <div className={ancho}>
+        <video
+          aria-hidden="true"
+          tabIndex={-1}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster={block.image || undefined}
+          className="pointer-events-none aspect-video w-full bg-black object-cover"
+        >
+          <source src={video.src} />
+        </video>
+      </div>
     );
   }
 
@@ -307,7 +318,7 @@ function BlockVideo({ block }: { block: ProductBlockData }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none relative aspect-video w-full overflow-hidden bg-black"
+      className={`pointer-events-none relative aspect-video overflow-hidden bg-black ${ancho}`}
     >
       {/*
         El cartel se queda debajo: mientras el video de YouTube arranca, el

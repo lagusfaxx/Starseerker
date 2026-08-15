@@ -43,7 +43,7 @@ export const BLOCK_KINDS: {
   {
     value: 'video',
     label: 'Video',
-    hint: 'Video a lo ancho que se reproduce solo, en silencio, en bucle y sin controles.',
+    hint: 'Video que se reproduce solo, en silencio, en bucle y sin controles. El tamano elige cuanto ocupa a lo ancho.',
     uses: { video: true, image: true, text: true },
   },
   {
@@ -106,9 +106,23 @@ export const BLOCK_IMAGE_SIDES: { value: ProductBlockImageSide; label: string }[
  * ocupa cada una del ancho de la pantalla.
  */
 export const BLOCK_IMAGE_SIZE_CLASS: Record<
-  'story' | 'gallery' | 'split',
+  'story' | 'gallery' | 'split' | 'video',
   Record<ProductBlockImageSize, string>
 > = {
+  /*
+   * El video mide por ancho, no por alto como los demas.
+   *
+   * Ocupaba siempre el ancho completo de la pantalla, que en un monitor son
+   * mas de mil pixeles de video y se come la pagina entera. Aqui el tamano
+   * limita cuanto se estira; el alto sale solo de mantener la proporcion 16:9.
+   * En telefono los tres son lo mismo, porque a ese ancho no hay margen que
+   * repartir y achicarlo solo lo haria ilegible.
+   */
+  video: {
+    sm: 'max-w-2xl',
+    md: 'max-w-5xl',
+    lg: 'max-w-none',
+  },
   story: {
     sm: 'h-10 sm:h-12',
     md: 'h-16 sm:h-20',
@@ -140,9 +154,9 @@ export const BLOCK_GALLERY_ITEM_CLASS: Record<ProductBlockImageSize, string> = {
   lg: 'w-[88%]',
 };
 
-/** Los tipos de bloque en los que el tamano de la imagen cambia algo. */
+/** Los tipos de bloque en los que el tamano cambia algo. */
 export function blockUsesImageSize(kind: ProductBlockKind): boolean {
-  return kind === 'story' || kind === 'gallery' || kind === 'split';
+  return kind === 'story' || kind === 'gallery' || kind === 'split' || kind === 'video';
 }
 
 export const BLOCK_THEMES: { value: ProductBlockTheme; label: string }[] = [

@@ -198,6 +198,11 @@ Los bloques con imagen eligen tambien su tamano — *pequena*, *mediana* o
 el alto de la fila en la franja de fotos y el alto de la fotografia en el
 bloque de imagen y texto.
 
+El bloque de video tambien lo tiene, y es el unico que se mide **por ancho**:
+su alto sale de mantener la proporcion 16:9. La grande va de lado a lado de la
+pantalla y la pequena queda centrada, del ancho del texto. En telefono los tres
+ocupan el ancho completo, porque a esa medida no hay margen que repartir.
+
 El ajuste se nota en todas las pantallas. En el telefono, donde no hay altura
 de franja con la que jugar, lo que cambia es la forma de la foto — apaisada la
 pequena, cuadrada la grande — y en la franja de fotos, ademas, cuanto ocupa

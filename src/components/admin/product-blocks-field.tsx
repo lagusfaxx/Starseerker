@@ -438,11 +438,17 @@ function imageLabelFor(kind: ProductBlockKind): string {
 function imageSizeLabelFor(kind: ProductBlockKind): string {
   if (kind === 'story') return 'Tamano del logo';
   if (kind === 'gallery') return 'Alto de la fila de fotos';
+  // El video es el unico que se mide por ancho: su alto sale de mantener la
+  // proporcion, asi que llamarlo "alto" confundiria.
+  if (kind === 'video') return 'Ancho del video';
   return 'Alto de la fotografia';
 }
 
 function imageSizeHintFor(kind: ProductBlockKind): string {
   if (kind === 'story') return 'Que tan alto se ve el logo sobre el titular.';
+  if (kind === 'video') {
+    return 'Cuanto ocupa el video en computador: la grande va de lado a lado de la pantalla y la pequena queda centrada, del ancho del texto. En telefono siempre ocupa el ancho completo.';
+  }
   if (kind === 'gallery') {
     return 'Alto de la fila en computador. En telefono cambia cuanto ocupa cada foto de la pantalla: con la pequena caben mas de dos, con la grande una sola.';
   }
