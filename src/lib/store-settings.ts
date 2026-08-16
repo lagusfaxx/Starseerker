@@ -100,6 +100,17 @@ export const DEFAULT_COLLECTIONS_TITLE = 'Colecciones';
  */
 const DEFAULT_GOOGLE_VERIFICATION = 'WHqTZkOSjvTRxmEh8gkHlTHR31eN_IN-Bf5YqTVe7e0';
 
+/**
+ * Segunda propiedad de Google Search Console verificada sobre el mismo sitio.
+ *
+ * Google admite varias etiquetas `google-site-verification` a la vez y cada una
+ * verifica una cuenta distinta, asi que esta se publica siempre, ademas de la
+ * del ajuste del panel. Va aparte y no dentro del ajuste porque el campo del
+ * panel guarda un solo codigo: si compartieran sitio, cambiar la cuenta del
+ * panel se llevaria por delante esta verificacion.
+ */
+export const EXTRA_GOOGLE_VERIFICATION = 'XmRygi7UYjYNdfoDHACbQTD0VpIZ9cYLgJIw-8C1zKY';
+
 /** Mensajes por defecto de la cinta, editables desde el panel. */
 const DEFAULT_MARQUEE = [
   'Envio a todo Chile con Blue Express',
