@@ -12,7 +12,12 @@ import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 import { getSessionPayload } from '@/lib/auth';
 import { cartItemCount, getCart } from '@/lib/cart';
-import { getNavLinks, getStoreSettings, storeIcons } from '@/lib/store-settings';
+import {
+  EXTRA_GOOGLE_VERIFICATION,
+  getNavLinks,
+  getStoreSettings,
+  storeIcons,
+} from '@/lib/store-settings';
 import { getSocialSettings, whatsappUrl } from '@/lib/social';
 import { WhatsappButton } from '@/components/whatsapp-button';
 
@@ -27,6 +32,20 @@ export const dynamic = 'force-dynamic';
  */
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getStoreSettings();
+
+  /*
+   * Google acepta varias etiquetas `google-site-verification` en el mismo
+   * `<head>`, una por cuenta que reclama el sitio, y Next las escribe todas
+   * cuando `google` recibe una lista. Se juntan aqui la del ajuste del panel
+   * y la segunda propiedad fija; se descartan los huecos (el campo del panel
+   * vaciado) y los repetidos, por si alguien guarda en el panel el mismo
+   * codigo que ya va fijo y terminaria duplicado en todas las paginas.
+   */
+  const codigosGoogle = [...new Set(
+    [settings.googleVerification, EXTRA_GOOGLE_VERIFICATION].filter(
+      (codigo): codigo is string => Boolean(codigo),
+    ),
+  )];
 
   return {
     metadataBase: new URL(env.appUrl),
@@ -55,13 +74,12 @@ export async function generateMetadata(): Promise<Metadata> {
      * sigue verificada tras este cambio, y cambiar de cuenta o verificar otro
      * dominio no necesita un despliegue.
      *
-     * Vaciar el campo quita la etiqueta del todo. Es la diferencia entre "no
+     * Vaciar el campo quita esa etiqueta del todo. Es la diferencia entre "no
      * hay nada guardado" y "se guardo vacio": si el campo en blanco volviera al
-     * token de abajo, no habria forma de quitarlo.
+     * token de abajo, no habria forma de quitarlo. La segunda propiedad fija
+     * (`EXTRA_GOOGLE_VERIFICATION`) se publica igual, no depende del panel.
      */
-    verification: settings.googleVerification
-      ? { google: settings.googleVerification }
-      : undefined,
+    verification: codigosGoogle.length ? { google: codigosGoogle } : undefined,
   };
 }
 
