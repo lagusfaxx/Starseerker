@@ -2369,6 +2369,109 @@ async function testGoogleVerification() {
   await prisma.setting.deleteMany({ where: { key: 'store.googleVerification' } });
 }
 
+async function testMerchantFeed() {
+  console.log('\nFeed de Google Merchant Center');
+  const { buildMerchantFeed, feedAvailability, feedPrices, feedTitle, escapeXml } = await import(
+    '../src/lib/merchant-feed'
+  );
+  type FeedProduct = Parameters<typeof feedTitle>[0];
+
+  const opciones = {
+    siteUrl: 'https://starseerker.cl',
+    storeName: 'STARSEEKER',
+    storeDescription: 'Tienda de prueba',
+    storeBrand: 'STARSEEKER',
+    currency: 'CLP',
+  };
+
+  const base: FeedProduct = {
+    slug: 'e55-pro',
+    name: 'Scooter E55 Pro',
+    subtitle: 'Autonomia de 55 km',
+    description: 'Scooter electrico con frenos de disco y suspension delantera.',
+    seoDescription: null,
+    price: new Prisma.Decimal(299990),
+    compareAtPrice: null,
+    sku: 'SS-E55-PRO',
+    gtin: null,
+    brand: null,
+    stock: 4,
+    incoming: false,
+    weightGrams: 18000,
+    images: [{ url: '/api/media/uno' }, { url: 'https://cdn.test/dos.jpg' }],
+    variants: [],
+    collections: [{ collection: { name: 'Scooters' } }],
+  };
+
+  const xml = buildMerchantFeed([base], opciones);
+  check('declara el espacio de nombres de Google', xml.includes('xmlns:g="http://base.google.com/ns/1.0"'));
+  check('publica el SKU como identificador', xml.includes('<g:id>SS-E55-PRO</g:id>'));
+  check('el enlace apunta a la ficha del producto', xml.includes('<g:link>https://starseerker.cl/products/e55-pro</g:link>'));
+  // Las fotos del panel se sirven desde una ruta relativa, y Google necesita
+  // la direccion completa: una relativa la descarta como imagen rota.
+  check('convierte la imagen en absoluta', xml.includes('<g:image_link>https://starseerker.cl/api/media/uno</g:image_link>'));
+  check('conserva la imagen que ya era absoluta', xml.includes('<g:additional_image_link>https://cdn.test/dos.jpg</g:additional_image_link>'));
+  check('usa la marca de la tienda como respaldo', xml.includes('<g:brand>STARSEEKER</g:brand>'));
+  check('el SKU tambien va como referencia del fabricante', xml.includes('<g:mpn>SS-E55-PRO</g:mpn>'));
+  check('el peso sale del bulto que cotiza el envio', xml.includes('<g:shipping_weight>18000 g</g:shipping_weight>'));
+  check('la coleccion es la categoria de la tienda', xml.includes('<g:product_type>Scooters</g:product_type>'));
+
+  // Con marca conocida no se declara "sin identificador": eso apagaria el
+  // cruce con las ofertas de otras tiendas, que es donde aparece el producto.
+  check('no niega el identificador si hay marca', !xml.includes('identifier_exists'));
+  check(
+    'lo niega solo cuando no hay ni codigo ni marca',
+    buildMerchantFeed([base], { ...opciones, storeBrand: null }).includes('<g:identifier_exists>no</g:identifier_exists>'),
+  );
+
+  // El titulo suma la marca salvo que el nombre ya la traiga.
+  check('agrega la marca al titulo', feedTitle(base, 'STARSEEKER') === 'Scooter E55 Pro STARSEEKER');
+  check(
+    'no repite la marca si ya esta en el nombre',
+    feedTitle({ ...base, name: 'STARSEEKER E55' }, 'STARSEEKER') === 'STARSEEKER E55',
+  );
+  check('la marca del producto manda sobre la de la tienda', buildMerchantFeed([{ ...base, brand: 'Xiaomi' }], opciones).includes('<g:brand>Xiaomi</g:brand>'));
+
+  // Precio: sin descuento va uno solo; con descuento, el tachado en `price` y
+  // el que se cobra en `sale_price`, igual que muestra la ficha.
+  check('sin descuento publica un solo precio', feedPrices(base, 'CLP').price === '299990 CLP' && feedPrices(base, 'CLP').salePrice === null);
+  const rebajado = feedPrices({ ...base, compareAtPrice: new Prisma.Decimal(349990) }, 'CLP');
+  check('con descuento separa precio y oferta', rebajado.price === '349990 CLP' && rebajado.salePrice === '299990 CLP');
+  // Un "precio antes" menor al actual es un dato mal cargado, no una oferta:
+  // publicarlo mostraria en Google un precio mayor al de la pagina.
+  check(
+    'ignora un precio anterior mas barato',
+    feedPrices({ ...base, compareAtPrice: new Prisma.Decimal(199990) }, 'CLP').salePrice === null,
+  );
+
+  // Disponibilidad: la reposicion en camino no es lo mismo que agotado.
+  check('con stock esta disponible', feedAvailability(base) === 'in_stock');
+  check('sin stock esta agotado', feedAvailability({ ...base, stock: 0 }) === 'out_of_stock');
+  check('con reposicion en camino es backorder', feedAvailability({ ...base, stock: 0, incoming: true }) === 'backorder');
+  // Cuando hay variantes manda la suma de sus unidades: el stock base del
+  // producto no es el que se puede comprar.
+  check(
+    'las variantes deciden la disponibilidad',
+    feedAvailability({ ...base, stock: 0, variants: [{ stock: 0 }, { stock: 3 }] }) === 'in_stock',
+  );
+  check(
+    'todas las variantes vacias es agotado',
+    feedAvailability({ ...base, stock: 9, variants: [{ stock: 0 }] }) === 'out_of_stock',
+  );
+
+  // Lo que Google rechazaria igual no se manda: solo llena de errores la
+  // cuenta y tapa los problemas que si hay que mirar.
+  check('descarta un producto sin imagenes', !buildMerchantFeed([{ ...base, images: [] }], opciones).includes('<item>'));
+  check('descarta un producto sin precio', !buildMerchantFeed([{ ...base, price: new Prisma.Decimal(0) }], opciones).includes('<item>'));
+
+  // Un ampersand sin escapar rompe el archivo entero, no solo ese producto.
+  check('escapa los caracteres reservados', escapeXml('Bosch & Cia <b>') === 'Bosch &amp; Cia &lt;b&gt;');
+  check(
+    'un nombre con ampersand no rompe el XML',
+    buildMerchantFeed([{ ...base, name: 'Casco & Guantes' }], opciones).includes('Casco &amp; Guantes'),
+  );
+}
+
 async function main() {
   console.log('Ejecutando pruebas de la tienda STARSEEKER...');
 
@@ -2399,6 +2502,7 @@ async function main() {
   await testBannerTone();
   await testHomeSeoNames();
   await testGoogleVerification();
+  await testMerchantFeed();
 
   console.log(`\n${passed} pruebas correctas, ${failed} fallidas.`);
   await prisma.$disconnect();
